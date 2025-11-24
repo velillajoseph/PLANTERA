@@ -35,17 +35,18 @@ export default function SignupPage() {
                 letterSpacing: '0.05em',
               }}
             >
-              Sign up
+              Create your Plantera account
             </p>
             <h1 style={{ fontSize: '2.5rem', margin: 0, lineHeight: 1.05 }}>
-              Bring every storefront and product into one customer experience.
+              Shop across connected stores with one secure login.
             </h1>
             <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.7 }}>
-              Join the early access list to streamline store onboarding, product
-              curation, and customer feedback in a single workspace.
+              Register to browse curated products, manage your orders, and get
+              updates from every Plantera store you love. We will verify your
+              email with a security code before unlocking your account.
             </p>
             <div style={{ display: 'grid', gap: '0.85rem' }}>
-              {["Unified data across stores", "Fast go-live playbooks", "Customer-ready insights"].map(
+              {["One login for every Plantera store", "Email verified for purchase security", "Order-ready profile with phone details"].map(
                 (item) => (
                   <div
                     key={item}
@@ -60,10 +61,10 @@ export default function SignupPage() {
           </div>
 
           <div style={cardStyle}>
-            <h2 style={{ margin: '0 0 0.5rem' }}>Join the waitlist</h2>
+            <h2 style={{ margin: '0 0 0.5rem' }}>Sign up to start shopping</h2>
             <p style={{ margin: '0 0 1rem', color: 'var(--muted)' }}>
-              Tell us about you and your store. We will email you with the next
-              steps to activate your account.
+              Enter your details, set a password, and confirm the security code
+              we email you. You will be ready to purchase once verified.
             </p>
             <SignupForm />
           </div>
@@ -72,7 +73,7 @@ export default function SignupPage() {
 
       <section style={sectionStyle}>
         <div style={{ display: 'grid', gap: '1.25rem' }}>
-          <h2 style={{ margin: 0 }}>What you will get</h2>
+          <h2 style={{ margin: 0 }}>Why verify your email?</h2>
           <div
             style={{
               display: 'grid',
@@ -82,16 +83,16 @@ export default function SignupPage() {
           >
             {[
               {
-                title: 'Launch blueprint',
-                copy: 'Step-by-step onboarding for connecting storefronts and catalogs.',
+                title: 'Protect purchases',
+                copy: 'Verification ensures only you can confirm orders and manage delivery updates.',
               },
               {
-                title: 'Customer-ready insights',
-                copy: 'Automated metrics, alerts, and reports for every launch stage.',
+                title: 'Secure account recovery',
+                copy: 'Verified contact details help recover your account quickly if you lose access.',
               },
               {
-                title: 'Product feedback loop',
-                copy: 'Capture feedback and improve products with structured workflows.',
+                title: 'Trusted store network',
+                copy: 'Stores know verified shoppers are real customers, unlocking promotions and rewards.',
               },
             ].map(({ title, copy }) => (
               <div key={title} style={cardStyle}>
