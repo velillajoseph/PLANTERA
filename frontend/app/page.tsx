@@ -47,6 +47,18 @@ export default function HomePage() {
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <a
+                href="/signup"
+                style={{
+                  background: '#0f172a',
+                  color: '#fff',
+                  padding: '0.85rem 1.25rem',
+                  borderRadius: '14px',
+                  fontWeight: 700,
+                }}
+              >
+                Get started
+              </a>
+              <a
                 href="#products"
                 style={{
                   background: 'var(--accent)',
