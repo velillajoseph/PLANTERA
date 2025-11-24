@@ -24,25 +24,54 @@ class FeedbackRead(SQLModel):
     created_at: datetime
 
 
-class Customer(SQLModel, table=True):
+class CustomerAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(max_length=120)
+    first_name: str = Field(max_length=100)
+    last_name: str = Field(max_length=100)
     email: EmailStr = Field(
         index=True, max_length=255, sa_column_kwargs={"unique": True}
     )
-    company: Optional[str] = Field(default=None, max_length=150)
+    phone: Optional[str] = Field(default=None, max_length=30)
+    password_hash: str = Field(max_length=255)
+    is_verified: bool = Field(default=False)
+    verification_code_hash: Optional[str] = Field(default=None, max_length=128)
+    verification_expires_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-class CustomerCreate(SQLModel):
-    name: str
+class CustomerRegister(SQLModel):
+    first_name: str
+    last_name: str
     email: EmailStr
-    company: Optional[str] = None
+    phone: Optional[str] = None
+    password: str
 
 
-class CustomerRead(SQLModel):
+class CustomerPublic(SQLModel):
     id: int
-    name: str
+    first_name: str
+    last_name: str
     email: EmailStr
-    company: Optional[str]
+    phone: Optional[str]
+    is_verified: bool
     created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+class CustomerRegistrationResponse(SQLModel):
+    customer: CustomerPublic
+    verification_required: bool = Field(default=True)
+    verification_preview: Optional[str] = None
+    message: str
+
+
+class CustomerVerificationRequest(SQLModel):
+    email: EmailStr
+    code: str
+
+
+class CustomerResendRequest(SQLModel):
+    email: EmailStr
