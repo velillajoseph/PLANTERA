@@ -1,4 +1,5 @@
 import os
+
 from sqlmodel import SQLModel, create_engine
 
 DEFAULT_DATABASE_URL = "sqlite:///./data.db"

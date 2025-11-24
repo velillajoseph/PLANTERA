@@ -2,7 +2,8 @@
 
 import { FormEvent, useState } from 'react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 type FeedbackFormState = 'idle' | 'loading' | 'error' | 'success';
 
@@ -25,7 +26,7 @@ export default function FeedbackForm() {
       const response = await fetch(`${API_BASE_URL}/api/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, message })
+        body: JSON.stringify({ name, message }),
       });
 
       if (!response.ok) {
@@ -37,12 +38,17 @@ export default function FeedbackForm() {
       setMessage('');
     } catch (err) {
       setStatus('error');
-      setError({ message: err instanceof Error ? err.message : 'Unknown error' });
+      setError({
+        message: err instanceof Error ? err.message : 'Unknown error',
+      });
     }
   };
 
   return (
-    <form onSubmit={submit} style={{ display: 'grid', gap: '1rem', maxWidth: '480px' }}>
+    <form
+      onSubmit={submit}
+      style={{ display: 'grid', gap: '1rem', maxWidth: '480px' }}
+    >
       <div style={{ display: 'grid', gap: '0.25rem' }}>
         <label htmlFor="name">Name</label>
         <input
@@ -50,7 +56,11 @@ export default function FeedbackForm() {
           value={name}
           onChange={(event) => setName(event.target.value)}
           required
-          style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+          style={{
+            padding: '0.75rem',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+          }}
         />
       </div>
       <div style={{ display: 'grid', gap: '0.25rem' }}>
@@ -61,7 +71,11 @@ export default function FeedbackForm() {
           onChange={(event) => setMessage(event.target.value)}
           required
           rows={4}
-          style={{ padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+          style={{
+            padding: '0.75rem',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+          }}
         />
       </div>
       <button
@@ -73,7 +87,7 @@ export default function FeedbackForm() {
           color: 'white',
           border: 'none',
           borderRadius: '8px',
-          fontWeight: 700
+          fontWeight: 700,
         }}
       >
         {status === 'loading' ? 'Sending…' : 'Send feedback'}
