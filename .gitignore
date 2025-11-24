@@ -11,3 +11,15 @@ __pycache__/
 *.log
 .DS_Store
 Thumbs.db
+
+# Node and Next.js
+node_modules/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+
+# Databases
+*.db
