@@ -13,7 +13,7 @@ logger = structlog.get_logger()
 
 
 @asynccontextmanager
-def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):
     configure_logging()
     init_db()
     logger.info("app_started", database_url=os.getenv("DATABASE_URL", "sqlite"))
