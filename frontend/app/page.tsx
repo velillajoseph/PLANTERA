@@ -59,6 +59,19 @@ export default function HomePage() {
                 Get started
               </a>
               <a
+                href="/login"
+                style={{
+                  background: '#0f172a',
+                  color: '#fff',
+                  padding: '0.85rem 1.25rem',
+                  borderRadius: '14px',
+                  fontWeight: 700,
+                  opacity: 0.9,
+                }}
+              >
+                Login & switch views
+              </a>
+              <a
                 href="#products"
                 style={{
                   background: 'var(--accent)',
