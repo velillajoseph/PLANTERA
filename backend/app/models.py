@@ -29,8 +29,10 @@ class CustomerAccount(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     first_name: str = Field(max_length=100)
     last_name: str = Field(max_length=100)
-    email: EmailStr = Field(
-        sa_column=Column(String(255), unique=True, index=True)
+    email: str = Field(
+        index=True,
+        max_length=255,
+        sa_column_kwargs={"unique": True},
     )
     phone: Optional[str] = Field(default=None, max_length=30)
     password_hash: str = Field(max_length=255)
