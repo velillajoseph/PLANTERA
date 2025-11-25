@@ -4,6 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 
 type Role = "admin" | "store" | "customer";
 
+type Plant = {
+  id: number;
+  name: string;
+  price: number;
+  light: string;
+  size: string;
+  stock: number;
+  tags: string[];
+};
+
 type DemoAccount = {
   email: string;
   password: string;
@@ -68,6 +78,63 @@ const demoAccounts: Record<Role, DemoAccount> = {
     notes: "Customers browse plants, save favorites, and manage a cart.",
   },
 };
+
+const featuredPlants: Plant[] = [
+  {
+    id: 1,
+    name: "Monstera Deliciosa",
+    price: 42,
+    light: "Medium indirect",
+    size: "10in nursery pot",
+    stock: 12,
+    tags: ["statement", "tropical"],
+  },
+  {
+    id: 2,
+    name: "Fiddle Leaf Fig",
+    price: 58,
+    light: "Bright filtered",
+    size: "12in grower pot",
+    stock: 7,
+    tags: ["tree", "architectural"],
+  },
+  {
+    id: 3,
+    name: "String of Pearls",
+    price: 28,
+    light: "Bright", 
+    size: "6in hanging basket",
+    stock: 18,
+    tags: ["trailing", "succulent"],
+  },
+  {
+    id: 4,
+    name: "Calathea Orbifolia",
+    price: 34,
+    light: "Medium", 
+    size: "8in nursery pot",
+    stock: 10,
+    tags: ["patterned", "pet-friendly"],
+  },
+  {
+    id: 5,
+    name: "ZZ Plant",
+    price: 30,
+    light: "Low to medium",
+    size: "8in nursery pot",
+    stock: 25,
+    tags: ["low-maintenance", "office"],
+  },
+  {
+    id: 6,
+    name: "Bird of Paradise",
+    price: 72,
+    light: "Bright", 
+    size: "12in nursery pot",
+    stock: 5,
+    tags: ["tropical", "large"],
+  },
+];
 
 const apiExamples = [
   {
@@ -352,22 +419,75 @@ export default function LoginPage() {
   const [loggedInRole, setLoggedInRole] = useState<Role | null>(null);
   const [adminView, setAdminView] = useState<"store" | "customer">("store");
   const [error, setError] = useState<string | undefined>();
+  const [cartItems, setCartItems] = useState<Record<number, number>>({});
+  const [favorites, setFavorites] = useState<Set<number>>(new Set());
 
   const account = useMemo(() => demoAccounts[selectedRole], [selectedRole]);
 
-  useEffect(() => {
+  const cartCount = useMemo(
+    () =>
+      Object.values(cartItems).reduce((total, quantity) => total + quantity, 0),
+    [cartItems],
+  );
+
+  const favoriteCount = useMemo(() => favorites.size, [favorites]);
+
+  const handleRoleChange = (role: Role) => {
+    setSelectedRole(role);
     setLoggedInRole(null);
     setError(undefined);
-  }, [selectedRole]);
+    setCartItems({});
+    setFavorites(new Set());
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (loggedInRole) {
+      const payload = {
+        role: loggedInRole,
+        cartCount: loggedInRole === "customer" ? cartCount : 0,
+        favoriteCount: loggedInRole === "customer" ? favoriteCount : 0,
+      };
+      window.localStorage.setItem("plantera-session", JSON.stringify(payload));
+      window.dispatchEvent(new Event("plantera-session-update"));
+    } else {
+      window.localStorage.removeItem("plantera-session");
+      window.dispatchEvent(new Event("plantera-session-update"));
+    }
+  }, [loggedInRole, cartCount, favoriteCount]);
 
   const handleLogin = (email: string, password: string) => {
     if (email === account.email && password === account.password) {
       setLoggedInRole(selectedRole);
       setError(undefined);
+      if (selectedRole !== "customer") {
+        setCartItems({});
+        setFavorites(new Set());
+      }
     } else {
       setLoggedInRole(null);
       setError("Invalid credentials for the selected role. Use the provided demo values.");
     }
+  };
+
+  const toggleFavorite = (plantId: number) => {
+    setFavorites((current) => {
+      const next = new Set(current);
+      if (next.has(plantId)) {
+        next.delete(plantId);
+      } else {
+        next.add(plantId);
+      }
+      return next;
+    });
+  };
+
+  const addToCart = (plantId: number) => {
+    setCartItems((current) => ({
+      ...current,
+      [plantId]: (current[plantId] || 0) + 1,
+    }));
   };
 
   return (
@@ -392,7 +512,7 @@ export default function LoginPage() {
                   <button
                     key={role}
                     type="button"
-                    onClick={() => setSelectedRole(role as Role)}
+                    onClick={() => handleRoleChange(role as Role)}
                     style={{
                       padding: "0.65rem 0.95rem",
                       borderRadius: "12px",
@@ -476,13 +596,107 @@ export default function LoginPage() {
         </div>
       </section>
 
-      {loggedInRole && loggedInRole !== "admin" && (
-        <section style={{ ...sectionStyle, paddingTop: "1rem" }}>
-          <div style={{ ...cardStyle, display: "grid", gap: "0.75rem", background: "rgba(255,255,255,0.95)", borderColor: "#d9e3f0" }}>
-            <h2 style={{ margin: 0, color: "#0f172a" }}>You are logged in as {loggedInRole}</h2>
-            <p style={{ margin: 0, color: "#475569" }}>
-              Explore the API actions above that match this role, then hop back to Admin to compare storefront vs. customer-facing layouts using the dropdown.
-            </p>
+          {loggedInRole && loggedInRole !== "admin" && (
+            <section style={{ ...sectionStyle, paddingTop: "1rem" }}>
+              <div style={{ ...cardStyle, display: "grid", gap: "0.75rem", background: "rgba(255,255,255,0.95)", borderColor: "#d9e3f0" }}>
+                <h2 style={{ margin: 0, color: "#0f172a" }}>You are logged in as {loggedInRole}</h2>
+                <p style={{ margin: 0, color: "#475569" }}>
+                  Explore the API actions above that match this role, then hop back to Admin to compare storefront vs. customer-facing layouts using the dropdown.
+                </p>
+              </div>
+            </section>
+          )}
+
+      {loggedInRole === "customer" && (
+        <section id="customer-view" style={{ ...sectionStyle, paddingTop: "0.5rem" }}>
+          <div style={{ ...cardStyle, display: "grid", gap: "0.75rem", background: "#0b1224", color: "#e2e8f0", borderColor: "rgba(148,163,184,0.3)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+              <div>
+                <p style={{ margin: 0, color: "#a5b4fc", fontWeight: 800 }}>Fern Hub — Live Storefront</p>
+                <h2 style={{ margin: "0.15rem 0", color: "#f8fafc" }}>Shop plants curated for you</h2>
+                <p style={{ margin: 0, color: "#cbd5e1", lineHeight: 1.5 }}>
+                  Add to cart, tap the heart to save favorites, and watch the header update with a modern ecommerce treatment.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                <div style={{ padding: "0.6rem 0.9rem", borderRadius: "12px", background: "rgba(52,211,153,0.12)", color: "#bbf7d0", border: "1px solid rgba(52,211,153,0.25)", fontWeight: 800 }}>
+                  ❤️ {favoriteCount} favorites
+                </div>
+                <div style={{ padding: "0.6rem 0.9rem", borderRadius: "12px", background: "rgba(255,255,255,0.08)", color: "#fff", border: "1px solid rgba(148,163,184,0.35)", fontWeight: 800 }}>
+                  🛒 {cartCount} in cart
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))" }}>
+              {featuredPlants.map((plant) => {
+                const selected = favorites.has(plant.id);
+                const carted = cartItems[plant.id] ?? 0;
+                return (
+                  <div
+                    key={plant.id}
+                    style={{
+                      ...cardStyle,
+                      boxShadow: "none",
+                      background: "#fff",
+                      borderColor: selected ? "#22c55e" : "#e2e8f0",
+                      display: "grid",
+                      gap: "0.65rem",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ padding: "0.35rem 0.6rem", borderRadius: "999px", background: "#f1f5f9", color: "#0f172a", fontWeight: 800 }}>In stock • {plant.stock}</div>
+                      <button
+                        type="button"
+                        onClick={() => toggleFavorite(plant.id)}
+                        style={{
+                          border: selected ? "1px solid #22c55e" : "1px solid #e2e8f0",
+                          background: selected ? "#ecfdf3" : "#f8fafc",
+                          color: selected ? "#15803d" : "#0f172a",
+                          borderRadius: "10px",
+                          padding: "0.45rem 0.75rem",
+                          fontWeight: 800,
+                        }}
+                      >
+                        {selected ? "Favorited" : "Favorite"}
+                      </button>
+                    </div>
+                    <div style={{ height: 140, borderRadius: "14px", background: "linear-gradient(135deg, #e0f2fe, #dcfce7)", border: "1px solid #e2e8f0" }} />
+                    <div style={{ display: "grid", gap: "0.25rem" }}>
+                      <h3 style={{ margin: 0 }}>{plant.name}</h3>
+                      <p style={{ margin: 0, color: "#475569" }}>{plant.light} • {plant.size}</p>
+                      <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap" }}>
+                        {plant.tags.map((tag) => (
+                          <span key={tag} style={{ padding: "0.35rem 0.7rem", borderRadius: "10px", background: "#f8fafc", border: "1px solid #e2e8f0", fontWeight: 700, color: "#0f172a" }}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ fontWeight: 800, fontSize: "1.1rem" }}>${plant.price.toFixed(2)}</span>
+                        <span style={{ color: "#475569", fontSize: "0.95rem" }}>Ships in 2-3 days</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addToCart(plant.id)}
+                        style={{
+                          border: "none",
+                          background: "#0f172a",
+                          color: "#fff",
+                          borderRadius: "12px",
+                          padding: "0.65rem 0.9rem",
+                          fontWeight: 800,
+                          boxShadow: "0 12px 30px rgba(15,23,42,0.18)",
+                        }}
+                      >
+                        Add to cart {carted > 0 ? `(${carted})` : ""}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
       )}

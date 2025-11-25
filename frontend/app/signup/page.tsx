@@ -1,108 +1,140 @@
-import SignupForm from '../components/SignupForm';
+"use client";
 
-const sectionStyle = {
-  maxWidth: '1100px',
-  margin: '0 auto',
-  padding: '3rem 1.25rem',
+import Link from "next/link";
+import { useState } from "react";
+
+const labelStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "0.35rem",
+  fontWeight: 700,
+  color: "#0f172a",
 };
 
-const cardStyle = {
-  background: '#fff',
-  borderRadius: '18px',
-  padding: '1.5rem',
-  border: '1px solid #e2e8f0',
-  boxShadow: '0 16px 40px rgba(15,23,42,0.08)',
+const inputStyle: React.CSSProperties = {
+  padding: "0.9rem 1rem",
+  borderRadius: "12px",
+  border: "1px solid #e2e8f0",
+  fontSize: "1rem",
 };
 
 export default function SignupPage() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("customer");
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-      <section style={{ ...sectionStyle, paddingTop: '4rem' }}>
-        <div
-          style={{
-            display: 'grid',
-            gap: '2rem',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <p
-              style={{
-                margin: 0,
-                color: 'var(--accent)',
-                fontWeight: 800,
-                letterSpacing: '0.05em',
-              }}
-            >
-              Create your Plantera account
-            </p>
-            <h1 style={{ fontSize: '2.5rem', margin: 0, lineHeight: 1.05 }}>
-              Shop across connected stores with one secure login.
-            </h1>
-            <p style={{ margin: 0, color: 'var(--muted)', lineHeight: 1.7 }}>
-              Register to browse curated products, manage your orders, and get
-              updates from every Plantera store you love. We will verify your
-              email with a security code before unlocking your account.
-            </p>
-            <div style={{ display: 'grid', gap: '0.85rem' }}>
-              {["One login for every Plantera store", "Email verified for purchase security", "Order-ready profile with phone details"].map(
-                (item) => (
-                  <div
-                    key={item}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                  >
-                    <span style={{ color: 'var(--accent)', fontWeight: 800 }}>•</span>
-                    <span style={{ color: '#0f172a', fontWeight: 600 }}>{item}</span>
-                  </div>
-                ),
-              )}
-            </div>
-          </div>
+    <div
+      style={{
+        maxWidth: "1024px",
+        margin: "0 auto",
+        padding: "3rem 1.5rem",
+        display: "grid",
+        gap: "1.5rem",
+      }}
+    >
+      <div
+        style={{
+          background: "linear-gradient(135deg, #ecfdf3, #eff6ff)",
+          padding: "2rem",
+          borderRadius: "18px",
+          border: "1px solid #d9e3f0",
+          display: "grid",
+          gap: "0.75rem",
+        }}
+      >
+        <p style={{ margin: 0, color: "#15803d", fontWeight: 800 }}>Sign up</p>
+        <h1 style={{ margin: 0 }}>Create your Plantera account</h1>
+        <p style={{ margin: 0, color: "#475569", lineHeight: 1.6 }}>
+          Pick a role to test the platform quickly. You can always log in with
+          the demo credentials on the login page to explore the Admin, Store,
+          or Customer experiences.
+        </p>
+      </div>
 
-          <div style={cardStyle}>
-            <h2 style={{ margin: '0 0 0.5rem' }}>Sign up to start shopping</h2>
-            <p style={{ margin: '0 0 1rem', color: 'var(--muted)' }}>
-              Enter your details, set a password, and confirm the security code
-              we email you. You will be ready to purchase once verified.
-            </p>
-            <SignupForm />
-          </div>
-        </div>
-      </section>
-
-      <section style={sectionStyle}>
-        <div style={{ display: 'grid', gap: '1.25rem' }}>
-          <h2 style={{ margin: 0 }}>Why verify your email?</h2>
-          <div
+      <div
+        style={{
+          background: "#fff",
+          padding: "1.75rem",
+          borderRadius: "18px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 18px 45px rgba(15,23,42,0.08)",
+          display: "grid",
+          gap: "1rem",
+        }}
+      >
+        <label style={labelStyle}>
+          <span>Full name</span>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            style={inputStyle}
+            placeholder="Avery Botanist"
+          />
+        </label>
+        <label style={labelStyle}>
+          <span>Email</span>
+          <input
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            style={inputStyle}
+            type="email"
+            placeholder="you@plantera.demo"
+          />
+        </label>
+        <label style={labelStyle}>
+          <span>Role</span>
+          <select
+            value={role}
+            onChange={(event) => setRole(event.target.value)}
             style={{
-              display: 'grid',
-              gap: '1rem',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              ...inputStyle,
+              cursor: "pointer",
+              background: "#f8fafc",
+              fontWeight: 700,
             }}
           >
-            {[
-              {
-                title: 'Protect purchases',
-                copy: 'Verification ensures only you can confirm orders and manage delivery updates.',
-              },
-              {
-                title: 'Secure account recovery',
-                copy: 'Verified contact details help recover your account quickly if you lose access.',
-              },
-              {
-                title: 'Trusted store network',
-                copy: 'Stores know verified shoppers are real customers, unlocking promotions and rewards.',
-              },
-            ].map(({ title, copy }) => (
-              <div key={title} style={cardStyle}>
-                <p style={{ margin: 0, fontWeight: 700 }}>{title}</p>
-                <p style={{ margin: '0.35rem 0 0', color: 'var(--muted)' }}>{copy}</p>
-              </div>
-            ))}
-          </div>
+            <option value="customer">Customer</option>
+            <option value="store">Store</option>
+            <option value="admin">Admin</option>
+          </select>
+        </label>
+        <button
+          type="button"
+          style={{
+            background: "#0f172a",
+            color: "#fff",
+            fontWeight: 800,
+            padding: "0.95rem 1rem",
+            borderRadius: "12px",
+            border: "none",
+            letterSpacing: "0.01em",
+          }}
+        >
+          Continue
+        </button>
+        <p style={{ margin: 0, color: "#475569" }}>
+          Already have an account? <Link href="/login">Log in</Link>
+        </p>
+        <div
+          style={{
+            border: "1px dashed #e2e8f0",
+            padding: "1rem",
+            borderRadius: "12px",
+            background: "#f8fafc",
+          }}
+        >
+          <p style={{ margin: 0, fontWeight: 700 }}>Demo shortcuts</p>
+          <p style={{ margin: "0.35rem 0", color: "#475569", lineHeight: 1.5 }}>
+            Use the login page to explore fully wired Admin, Store, and Customer
+            flows with prefilled demo credentials and the live interface switcher.
+          </p>
+          <ul style={{ margin: 0, color: "#0f172a", paddingLeft: "1.2rem" }}>
+            <li>Admin: admin@plantera.demo / demo-admin</li>
+            <li>Store: fern-hub@plantera.demo / demo-store</li>
+            <li>Customer: plant-lover@plantera.demo / demo-customer</li>
+          </ul>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
