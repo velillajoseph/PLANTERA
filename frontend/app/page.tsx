@@ -1,251 +1,190 @@
-const sectionStyle = {
-  maxWidth: '1080px',
-  margin: '0 auto',
-  padding: '3rem 1rem',
-};
+import PlantCard from './components/PlantCard';
+import { plants } from './lib/plants';
 
-const cardStyle = {
-  background: '#fff',
-  padding: '1.5rem',
-  borderRadius: '16px',
-  boxShadow: '0 10px 30px rgba(15,23,42,0.08)',
-  border: '1px solid #e2e8f0',
-};
+// Número de demostración — reemplazar con el WhatsApp Business real de Plantera.
+const WHATSAPP_NUMBER = '17875550123';
+const WHATSAPP_LINK = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+  '¡Hola Plantera! Quiero más información.',
+)}`;
+
+const HERO_IMAGE =
+  'https://images.unsplash.com/photo-1545241047-6083a3684587?w=1000&q=80';
+const VIVEROS_IMAGE =
+  'https://images.unsplash.com/photo-1470058869958-2a77ade41c02?w=1000&q=80';
 
 export default function HomePage() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <section id="home" style={{ ...sectionStyle, paddingTop: '4rem' }}>
+    <div>
+      <section id="inicio" className="section">
         <div
+          className="container"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '2rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '3rem',
             alignItems: 'center',
           }}
         >
-          <div
-            style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
-          >
-            <p
-              style={{
-                fontSize: '0.95rem',
-                fontWeight: 700,
-                color: 'var(--accent)',
-                letterSpacing: '0.04em',
-              }}
-            >
-              Grow with Plantera
-            </p>
-            <h1 style={{ fontSize: '2.75rem', margin: 0, lineHeight: 1.1 }}>
-              Connect your stores, curate products, and delight customers.
+          <div style={{ display: 'grid', gap: '1.5rem' }}>
+            <span className="eyebrow">
+              Marketplace de plantas · Puerto Rico
+            </span>
+            <h1 style={{ fontSize: 'clamp(2.4rem, 5vw, 3.6rem)' }}>
+              Plantas excepcionales, de los viveros de la isla.
             </h1>
-            <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>
-              Plantera gives you a modern toolkit to launch experiences
-              fast—from storefront data to product insights and customer
-              feedback pipelines.
+            <p className="lead" style={{ maxWidth: '32rem' }}>
+              Plantera conecta a compradores con los mejores viveros locales —
+              con fotografía profesional, guías de cuidado y entrega coordinada
+              hasta tu puerta.
             </p>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <a
-                href="/signup"
-                style={{
-                  background: '#0f172a',
-                  color: '#fff',
-                  padding: '0.85rem 1.25rem',
-                  borderRadius: '14px',
-                  fontWeight: 700,
-                }}
-              >
-                Get started
+            <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
+              <a href="#coleccion" className="btn">
+                Explorar la colección
               </a>
-              <a
-                href="/login"
-                style={{
-                  background: '#0f172a',
-                  color: '#fff',
-                  padding: '0.85rem 1.25rem',
-                  borderRadius: '14px',
-                  fontWeight: 700,
-                  opacity: 0.9,
-                }}
-              >
-                Login & switch views
-              </a>
-              <a
-                href="#products"
-                style={{
-                  background: 'var(--accent)',
-                  color: '#fff',
-                  padding: '0.85rem 1.25rem',
-                  borderRadius: '14px',
-                  fontWeight: 700,
-                  boxShadow: '0 12px 28px rgba(34,197,94,0.25)',
-                }}
-              >
-                Explore Products
-              </a>
-              <a
-                href="/feedback"
-                style={{
-                  background: '#0f172a',
-                  color: '#fff',
-                  padding: '0.85rem 1.25rem',
-                  borderRadius: '14px',
-                  fontWeight: 700,
-                }}
-              >
-                Share Feedback
+              <a href="#para-viveros" className="btn btn--ghost">
+                Para viveros
               </a>
             </div>
           </div>
-          <div style={{ ...cardStyle, display: 'grid', gap: '1rem' }}>
-            <p style={{ margin: 0, color: 'var(--muted)' }}>Live snapshot</p>
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ fontWeight: 700 }}>Active stores</span>
-                <span style={{ fontWeight: 800, fontSize: '1.5rem' }}>24</span>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ fontWeight: 700 }}>Products curated</span>
-                <span style={{ fontWeight: 800, fontSize: '1.5rem' }}>
-                  1,280
-                </span>
-              </div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ fontWeight: 700 }}>Avg. satisfaction</span>
-                <span style={{ fontWeight: 800, fontSize: '1.5rem' }}>
-                  4.8 / 5
-                </span>
-              </div>
-            </div>
+          <div className="frame frame--45" style={{ maxHeight: '540px' }}>
+            <img
+              src={HERO_IMAGE}
+              alt="Monstera deliciosa en un interior luminoso"
+            />
           </div>
         </div>
       </section>
 
-      <section id="stores" style={sectionStyle}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h2 style={{ margin: 0, fontSize: '2rem' }}>Stores</h2>
-          <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>
-            Centralize every storefront with unified analytics, rapid
-            onboarding, and real-time health checks. Monitor performance and
-            surface issues before they impact customers.
-          </p>
+      <section id="coleccion" className="section" style={{ paddingTop: '2rem' }}>
+        <div className="container" style={{ display: 'grid', gap: '2.5rem' }}>
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <span className="eyebrow">La colección</span>
+            <h2 style={{ fontSize: '2.1rem' }}>Plantas destacadas</h2>
+            <p className="lead" style={{ maxWidth: '36rem' }}>
+              Una muestra del inventario de nuestros viveros aliados. Cada
+              planta incluye su guía de cuidado completa.
+            </p>
+          </div>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '1rem',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
+              gap: '2rem 1.5rem',
             }}
           >
-            {['Unified dashboards', 'Sync pipelines', 'Store uptime'].map(
-              (item) => (
-                <div key={item} style={cardStyle}>
-                  <p style={{ margin: 0, fontWeight: 700 }}>{item}</p>
-                  <p style={{ margin: '0.4rem 0 0', color: 'var(--muted)' }}>
-                    {item === 'Unified dashboards'
-                      ? 'Keep a single view of all sales channels.'
-                      : item === 'Sync pipelines'
-                        ? 'Integrate product and inventory changes automatically.'
-                        : 'Track health and alerts with built-in monitoring.'}
-                  </p>
-                </div>
-              ),
-            )}
+            {plants.map((plant) => (
+              <PlantCard key={plant.slug} plant={plant} />
+            ))}
           </div>
         </div>
       </section>
 
-      <section
-        id="products"
-        style={{ ...sectionStyle, background: '#fff', borderRadius: '18px' }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h2 style={{ margin: 0, fontSize: '2rem' }}>Products</h2>
-          <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>
-            Curate offerings quickly with structured data, smart
-            recommendations, and feedback loops that keep your catalog relevant.
-          </p>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: '1rem',
-            }}
-          >
-            {['Catalog curation', 'Insights', 'Launch playbooks'].map(
-              (item) => (
-                <div key={item} style={{ ...cardStyle, boxShadow: 'none' }}>
-                  <p style={{ margin: 0, fontWeight: 700 }}>{item}</p>
-                  <p style={{ margin: '0.4rem 0 0', color: 'var(--muted)' }}>
-                    {item === 'Catalog curation'
-                      ? 'Merge inventory data with merchandising in minutes.'
-                      : item === 'Insights'
-                        ? 'See what customers want with trend-aware analytics.'
-                        : 'Ship repeatable launches with checklists and automations.'}
-                  </p>
-                </div>
-              ),
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section id="contact" style={sectionStyle}>
+      <section id="para-viveros" className="dark-section section">
         <div
+          className="container"
           style={{
-            ...cardStyle,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1rem',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '3rem',
+            alignItems: 'center',
           }}
         >
-          <h2 style={{ margin: 0 }}>Contact Us</h2>
-          <p style={{ color: 'var(--muted)', margin: 0 }}>
-            Ready to see Plantera in action? Reach out and our team will tailor
-            a demo for your stores and products.
+          <div style={{ display: 'grid', gap: '1.5rem' }}>
+            <span className="eyebrow">Para viveros</span>
+            <h2 style={{ fontSize: '2.3rem' }}>
+              Tu vivero, en línea — sin complicaciones.
+            </h2>
+            <p className="lead">
+              Plantera lleva compradores a tu vivero sin que tengas que
+              administrar una tienda en línea. Cobramos una comisión simple y
+              transparente por venta, y nos encargamos del resto:
+            </p>
+            <div style={{ display: 'grid' }}>
+              {[
+                {
+                  num: '01',
+                  title: 'Fotografía profesional',
+                  copy: 'Cada planta fotografiada para que tu inventario luzca como merece.',
+                },
+                {
+                  num: '02',
+                  title: 'Entregas coordinadas',
+                  copy: 'Nosotros manejamos la logística con el comprador; tú te dedicas a cultivar.',
+                },
+                {
+                  num: '03',
+                  title: 'Nuevos clientes',
+                  copy: 'Compradores de toda la isla descubren tu vivero a través de Plantera.',
+                },
+              ].map((item) => (
+                <div
+                  key={item.num}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '3rem 1fr',
+                    gap: '1rem',
+                    padding: '1.25rem 0',
+                    borderTop: '1px solid rgba(243,239,230,0.15)',
+                  }}
+                >
+                  <span
+                    className="serif"
+                    style={{ color: 'var(--gold)', fontSize: '1.1rem' }}
+                  >
+                    {item.num}
+                  </span>
+                  <div style={{ display: 'grid', gap: '0.25rem' }}>
+                    <h3 style={{ fontSize: '1.15rem' }}>{item.title}</h3>
+                    <p className="lead" style={{ fontSize: '0.95rem' }}>
+                      {item.copy}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <a href="/dashboard" className="btn btn--cream">
+                Ver el panel de demostración
+              </a>
+            </div>
+          </div>
+          <div className="frame frame--45" style={{ maxHeight: '560px' }}>
+            <img
+              src={VIVEROS_IMAGE}
+              alt="Follaje tropical en un vivero"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="contacto" className="section">
+        <div
+          className="container"
+          style={{
+            display: 'grid',
+            gap: '1.25rem',
+            justifyItems: 'center',
+            textAlign: 'center',
+            maxWidth: '640px',
+          }}
+        >
+          <span className="eyebrow">Contacto</span>
+          <h2 style={{ fontSize: '2.1rem' }}>Hablemos</h2>
+          <p className="lead">
+            ¿Eres comprador con preguntas, o un vivero interesado en unirse a
+            Plantera? Escríbenos y te respondemos pronto.
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <a
-              href="mailto:hello@plantera.app"
-              style={{
-                padding: '0.85rem 1.25rem',
-                borderRadius: '14px',
-                border: '1px solid #e2e8f0',
-                fontWeight: 700,
-                color: '#0f172a',
-              }}
+              href={WHATSAPP_LINK}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn"
             >
-              Email us
+              Escríbenos por WhatsApp
             </a>
-            <a
-              href="/feedback"
-              style={{
-                padding: '0.85rem 1.25rem',
-                borderRadius: '14px',
-                background: 'var(--accent)',
-                color: '#fff',
-                fontWeight: 700,
-              }}
-            >
-              Send product feedback
+            <a href="mailto:hola@plantera.pr" className="btn btn--ghost">
+              Envíanos un correo
             </a>
           </div>
         </div>

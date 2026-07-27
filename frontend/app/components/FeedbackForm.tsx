@@ -83,7 +83,7 @@ export default function FeedbackForm() {
         disabled={status === 'loading'}
         style={{
           padding: '0.75rem',
-          background: 'var(--accent)',
+          background: 'var(--green-700)',
           color: 'white',
           border: 'none',
           borderRadius: '8px',
