@@ -44,7 +44,7 @@ const COPY = {
 export default function ShopMegaMenu({ facets }: { facets: CatalogFacets | null }) {
   const { lang } = useLang();
   const copy = COPY[lang];
-  const { open, openNow, closeSoon, closeNow, setOpen, containerRef } =
+  const { open, closeNow, setOpen, containerRef, panelRef, hoverProps } =
     useDropdown();
 
   const genera = facets?.genera.slice(0, 6) ?? [];
@@ -53,8 +53,7 @@ export default function ShopMegaMenu({ facets }: { facets: CatalogFacets | null 
   return (
     <div
       ref={containerRef}
-      onMouseEnter={openNow}
-      onMouseLeave={closeSoon}
+      {...hoverProps}
       style={{ position: 'static' }}
     >
       <button
@@ -69,6 +68,7 @@ export default function ShopMegaMenu({ facets }: { facets: CatalogFacets | null 
       </button>
 
       <div
+        ref={panelRef}
         className={`panel${open ? ' panel--open' : ''}`}
         style={{
           top: 'calc(100% + 1px)',

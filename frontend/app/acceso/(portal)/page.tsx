@@ -482,7 +482,7 @@ export default function VendorDashboardPage() {
           </p>
         ) : (
           <div style={{ display: 'grid', gap: '1rem' }}>
-            <div style={{ overflowX: 'auto' }}>
+            <div className="desktop-table scroll-x">
               <table className="table">
                 <thead>
                   <tr>
@@ -510,6 +510,39 @@ export default function VendorDashboardPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Phones read this as a list; a four-column table would overflow. */}
+            <div className="mobile-cards" style={{ gap: '0' }}>
+              {recentOrders.orders.map((order) => (
+                <div
+                  key={order.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    padding: '0.8rem 0',
+                    borderTop: '1px solid var(--line)',
+                  }}
+                >
+                  <div style={{ display: 'grid', gap: '0.15rem', minWidth: 0 }}>
+                    <span style={{ fontWeight: 600 }}>{order.customer_name}</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
+                      {formatDate(order.created_at)} ·{' '}
+                      {order.items.reduce((sum, line) => sum + line.quantity, 0)}{' '}
+                      {copy.thItems.toLowerCase()}
+                    </span>
+                  </div>
+                  <span
+                    className="display"
+                    style={{ fontSize: '1.05rem', whiteSpace: 'nowrap' }}
+                  >
+                    {formatMoney(order.total)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
             <div
               style={{
                 display: 'flex',

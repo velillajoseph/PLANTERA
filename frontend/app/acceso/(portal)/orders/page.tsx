@@ -152,7 +152,7 @@ export default function OrdersPageView() {
             {copy.subtitle}
           </p>
         </div>
-        <label className="field" style={{ minWidth: '200px' }}>
+        <label className="field filter-control" style={{ minWidth: '200px' }}>
           {copy.monthFilter}
           <select
             className="input"
@@ -174,7 +174,7 @@ export default function OrdersPageView() {
       </div>
 
       <div className="card" style={{ display: 'grid', gap: '1.25rem' }}>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="desktop-table scroll-x">
           <table className="table">
             <thead>
               <tr>
@@ -261,6 +261,90 @@ export default function OrdersPageView() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Phones get one card per order; a five-column table cannot fit. */}
+        <div className="mobile-cards" style={{ gap: '0.85rem' }}>
+          {data.orders.map((order) => {
+            const isExpanded = expanded === order.id;
+            const itemCount = order.items.reduce(
+              (sum, line) => sum + line.quantity,
+              0,
+            );
+            return (
+              <div
+                key={order.id}
+                className="card"
+                style={{ display: 'grid', gap: '0.85rem', padding: '1.15rem' }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: '1rem',
+                  }}
+                >
+                  <div style={{ display: 'grid', gap: '0.2rem', minWidth: 0 }}>
+                    <span style={{ fontWeight: 600 }}>{order.customer_name}</span>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
+                      {formatDate(order.created_at)} · {itemCount} {copy.thItems.toLowerCase()}
+                    </span>
+                  </div>
+                  <span
+                    className="display"
+                    style={{ fontSize: '1.15rem', whiteSpace: 'nowrap' }}
+                  >
+                    {formatMoney(order.total)}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--small"
+                  style={{ justifyContent: 'center' }}
+                  onClick={() => setExpanded(isExpanded ? null : order.id)}
+                >
+                  {isExpanded ? copy.hide : copy.view}
+                </button>
+
+                {isExpanded && (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gap: '0.5rem',
+                      paddingTop: '0.75rem',
+                      borderTop: '1px solid var(--line)',
+                    }}
+                  >
+                    {order.items.map((line, index) => (
+                      <div
+                        key={`${order.id}-m-${index}`}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem',
+                          fontSize: '0.9rem',
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, minWidth: 0 }}>
+                          {line.quantity} × {line.plant_name}
+                        </span>
+                        <span style={{ color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+                          {formatMoney(line.unit_price * line.quantity)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {data.orders.length === 0 && (
+            <p style={{ color: 'var(--muted)', textAlign: 'center', padding: '2rem 0' }}>
+              {copy.noOrders}
+            </p>
+          )}
         </div>
 
         {data.total > 0 && (

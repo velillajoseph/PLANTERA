@@ -92,6 +92,7 @@ export default function CartPage() {
       <h1 style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>{copy.title}</h1>
 
       <div
+        className="cart-layout"
         style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(320px, 2fr) minmax(260px, 1fr)',
@@ -177,7 +178,7 @@ export default function CartPage() {
           </div>
         </div>
 
-        <div className="card" style={{ display: 'grid', gap: '1rem', position: 'sticky', top: '120px' }}>
+        <div className="card cart-summary" style={{ display: 'grid', gap: '1rem' }}>
           <h2 style={{ fontSize: '1.25rem' }}>{copy.summary}</h2>
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--muted)' }}>{copy.subtotal}</span>

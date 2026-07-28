@@ -1,6 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 
 /**
  * Dropdown behaviour shared by the mega-menu, cart, and account menus.
@@ -11,6 +17,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export function useDropdown({ closeDelay = 160 } = {}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // A panel rendered through a portal lives outside containerRef, so it needs
+  // its own ref — otherwise taps inside it register as "outside" and close it.
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cancelClose = useCallback(() => {
@@ -40,14 +49,21 @@ export function useDropdown({ closeDelay = 160 } = {}) {
   useEffect(() => {
     if (!open) return;
 
+    const isInside = (target: Node | null) =>
+      Boolean(
+        target &&
+          (containerRef.current?.contains(target) ||
+            panelRef.current?.contains(target)),
+      );
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };
     const onPointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!isInside(event.target as Node)) setOpen(false);
     };
     const onFocusIn = (event: FocusEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+      if (!isInside(event.target as Node)) setOpen(false);
     };
 
     document.addEventListener('keydown', onKeyDown);
@@ -60,5 +76,28 @@ export function useDropdown({ closeDelay = 160 } = {}) {
     };
   }, [open]);
 
-  return { open, setOpen, openNow, closeSoon, closeNow, containerRef };
+  /**
+   * iOS fires mouseenter on tap *before* the click, so a hover-to-open handler
+   * opens the panel and the click then toggles it straight back shut — the
+   * classic "have to tap twice" bug. Restricting hover to real mice fixes it.
+   */
+  const hoverProps = {
+    onPointerEnter: (event: ReactPointerEvent) => {
+      if (event.pointerType === 'mouse') openNow();
+    },
+    onPointerLeave: (event: ReactPointerEvent) => {
+      if (event.pointerType === 'mouse') closeSoon();
+    },
+  };
+
+  return {
+    open,
+    setOpen,
+    openNow,
+    closeSoon,
+    closeNow,
+    containerRef,
+    panelRef,
+    hoverProps,
+  };
 }

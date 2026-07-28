@@ -86,12 +86,12 @@ export default function PaginatedGrid({
   }
 
   return (
-    <div ref={containerRef} style={{ display: 'grid', gap: '2rem', scrollMarginTop: '120px' }}>
+    <div ref={containerRef} style={{ display: 'grid', gap: '2rem', scrollMarginTop: '96px' }}>
       <div style={{ minHeight: lockedHeight }}>
         <div
           ref={gridRef}
           key={cycle}
-          className={`grid-swap${fading ? ' grid-swap--out' : ''}`}
+          className={`grid-swap product-grid${fading ? ' grid-swap--out' : ''}`}
           style={{
             display: 'grid',
             gridTemplateColumns: `repeat(auto-fill, minmax(${minColumnWidth}px, 1fr))`,

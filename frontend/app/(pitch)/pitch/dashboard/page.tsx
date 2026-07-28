@@ -609,7 +609,7 @@ export default function DashboardPage() {
             {copy.addPlant}
           </button>
         </div>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="scroll-x">
           <table className="table">
             <thead>
               <tr>

@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { CartIcon } from './Icons';
 import { useCart } from '../../lib/cart';
 import { useLang } from '../../lib/i18n';
 import { formatMoney } from '../../lib/format';
 import { useDropdown } from '../../lib/use-dropdown';
+import { useIsMobile } from '../../lib/use-is-mobile';
 import { resolveImageUrl } from '../../lib/catalog';
 
 const COPY = {
@@ -23,6 +25,7 @@ const COPY = {
     decrease: 'Restar uno',
     increase: 'Sumar uno',
     soon: 'Próximamente',
+    close: 'Cerrar carrito',
   },
   en: {
     open: 'Open cart',
@@ -37,6 +40,7 @@ const COPY = {
     decrease: 'Decrease quantity',
     increase: 'Increase quantity',
     soon: 'Coming soon',
+    close: 'Close cart',
   },
 };
 
@@ -44,9 +48,16 @@ export default function CartMenu() {
   const { lang } = useLang();
   const copy = COPY[lang];
   const { lines, count, subtotal, lastAddedAt, setQty, remove } = useCart();
-  const { open, openNow, closeSoon, closeNow, setOpen, containerRef } =
+  const { open, closeNow, setOpen, containerRef, panelRef, hoverProps } =
     useDropdown();
   const [pop, setPop] = useState(false);
+  const isMobile = useIsMobile();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- portals may only render after mount
+    setMounted(true);
+  }, []);
 
   // Pop the badge whenever something lands in the cart.
   useEffect(() => {
@@ -57,35 +68,35 @@ export default function CartMenu() {
     return () => clearTimeout(timer);
   }, [lastAddedAt]);
 
-  return (
-    <div
-      ref={containerRef}
-      style={{ position: 'relative' }}
-      onMouseEnter={openNow}
-      onMouseLeave={closeSoon}
-    >
-      <button
-        type="button"
-        className="icon-button"
-        aria-label={copy.open}
-        aria-expanded={open}
-        aria-haspopup="true"
-        onClick={() => setOpen((value) => !value)}
-      >
-        <CartIcon />
-        {count > 0 && (
-          <span className={`cart-badge${pop ? ' cart-badge--pop' : ''}`}>
-            {count}
-          </span>
-        )}
-      </button>
-
+  const overlay = (
+    <>
+      {/* Mobile-only scrim; the panel below becomes a right drawer via CSS. */}
       <div
-        className={`panel${open ? ' panel--open' : ''}`}
+        className={`cart-scrim${open ? ' cart-scrim--open' : ''}`}
+        onClick={closeNow}
+        aria-hidden
+      />
+  
+      <div
+        ref={panelRef}
+        className={`panel cart-panel${open ? ' panel--open cart-panel--open' : ''}`}
         style={{ top: 'calc(100% + 12px)', right: 0, width: 'min(360px, 90vw)', padding: '1.25rem' }}
       >
-        <p className="panel__heading">{copy.title}</p>
-
+        <div className="cart-panel__head">
+          <p className="panel__heading" style={{ marginBottom: 0 }}>
+            {copy.title}
+          </p>
+          <button
+            type="button"
+            className="icon-button cart-panel__close"
+            aria-label={copy.close}
+            onClick={closeNow}
+            style={{ fontSize: '1.4rem', lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+  
         {lines.length === 0 ? (
           <div style={{ display: 'grid', gap: '0.9rem' }}>
             <p style={{ color: 'var(--muted)', fontSize: '0.92rem' }}>
@@ -96,8 +107,9 @@ export default function CartMenu() {
             </Link>
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: '1rem' }}>
+          <div style={{ display: 'grid', gap: '1rem', flex: 1, alignContent: 'start' }}>
             <div
+              data-cart-list
               style={{
                 display: 'grid',
                 gap: '0.9rem',
@@ -190,9 +202,9 @@ export default function CartMenu() {
                 </div>
               ))}
             </div>
-
+  
             <hr className="hairline" />
-
+  
             <div
               style={{
                 display: 'flex',
@@ -229,6 +241,34 @@ export default function CartMenu() {
           </div>
         )}
       </div>
+    </>
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: 'relative' }}
+      {...hoverProps}
+    >
+      <button
+        type="button"
+        className="icon-button"
+        aria-label={copy.open}
+        aria-expanded={open}
+        aria-haspopup="true"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <CartIcon />
+        {count > 0 && (
+          <span className={`cart-badge${pop ? ' cart-badge--pop' : ''}`}>
+            {count}
+          </span>
+        )}
+      </button>
+
+      {isMobile && mounted
+        ? createPortal(overlay, document.body)
+        : overlay}
     </div>
   );
 }

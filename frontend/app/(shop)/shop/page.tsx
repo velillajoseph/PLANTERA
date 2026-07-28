@@ -192,7 +192,10 @@ function ShopContent() {
       </div>
 
       <div style={{ display: 'grid', gap: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div
+          className="chip-row"
+          style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}
+        >
           <button
             type="button"
             className={`chip${!category ? ' chip--active' : ''}`}

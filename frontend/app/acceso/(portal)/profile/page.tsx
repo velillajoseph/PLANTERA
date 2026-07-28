@@ -205,7 +205,8 @@ export default function ProfilePage() {
           />
         </label>
         <div
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}
+          className="stack-on-mobile"
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}
         >
           <label className="field">
             {copy.fieldPhone}
@@ -303,7 +304,8 @@ export default function ProfilePage() {
           />
         </label>
         <div
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}
+          className="stack-on-mobile"
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}
         >
           <label className="field">
             {copy.fieldNew}

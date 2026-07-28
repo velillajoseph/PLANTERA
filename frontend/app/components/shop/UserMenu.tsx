@@ -31,15 +31,14 @@ const COPY = {
 export default function UserMenu() {
   const { lang } = useLang();
   const copy = COPY[lang];
-  const { open, openNow, closeSoon, closeNow, setOpen, containerRef } =
+  const { open, closeNow, setOpen, containerRef, panelRef, hoverProps } =
     useDropdown();
 
   return (
     <div
       ref={containerRef}
       style={{ position: 'relative' }}
-      onMouseEnter={openNow}
-      onMouseLeave={closeSoon}
+      {...hoverProps}
     >
       <button
         type="button"
@@ -53,6 +52,7 @@ export default function UserMenu() {
       </button>
 
       <div
+        ref={panelRef}
         className={`panel${open ? ' panel--open' : ''}`}
         style={{ top: 'calc(100% + 12px)', right: 0, width: 'min(260px, 90vw)', padding: '1.25rem' }}
       >

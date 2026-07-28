@@ -550,7 +550,7 @@ function InventoryContent() {
           </label>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        <div className="desktop-table scroll-x">
           <table className="table">
             <thead>
               <tr>
@@ -658,6 +658,74 @@ function InventoryContent() {
           </table>
         </div>
 
+        {/* Phones get cards instead of a six-column table squeezed to 375px. */}
+        <div className="mobile-cards" style={{ gap: '0.85rem' }}>
+          {pageItems.map((item) => (
+            <div
+              key={item.id}
+              className="card"
+              style={{
+                display: 'grid',
+                gap: '0.85rem',
+                padding: '1rem',
+                opacity: item.is_active ? 1 : 0.6,
+              }}
+            >
+              <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
+                <Thumb item={item} />
+                <div style={{ flex: 1, display: 'grid', gap: '0.3rem', minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, lineHeight: 1.3 }}>
+                    {item.plant_name}
+                  </span>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
+                    {formatMoney(item.price)} · {copy.thStock}: {item.stock}
+                  </span>
+                  <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {statusBadge(item)}
+                    {item.is_featured && (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--gold)', fontWeight: 600 }}>
+                        ★ {copy.thFeatured}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => openEdit(item)}
+                  className="btn btn--ghost btn--small"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {copy.edit}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void togglePause(item)}
+                  className="btn btn--ghost btn--small"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {item.is_active ? copy.pause : copy.activate}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingDelete(item)}
+                  className="btn btn--danger btn--small"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  {copy.remove}
+                </button>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <p style={{ color: 'var(--muted)', textAlign: 'center', padding: '2rem 0' }}>
+              {items.length === 0 ? copy.emptyInventory : copy.emptyFiltered}
+            </p>
+          )}
+        </div>
+
         {filtered.length > 0 && (
           <div
             style={{
@@ -719,6 +787,7 @@ function InventoryContent() {
               />
             </label>
             <div
+              className="stack-on-mobile"
               style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}
             >
               <label className="field">
@@ -780,6 +849,7 @@ function InventoryContent() {
               />
             </label>
             <div
+              className="stack-on-mobile"
               style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}
             >
               <label className="field">
