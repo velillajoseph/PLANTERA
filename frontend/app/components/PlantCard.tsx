@@ -6,7 +6,7 @@ export default function PlantCard({ plant }: { plant: Plant }) {
   const vendor = getVendor(plant.vendorId);
 
   return (
-    <Link href={`/plants/${plant.slug}`} className="plant-card">
+    <Link href={`/pitch/plants/${plant.slug}`} className="plant-card">
       <div className="frame frame--45">
         <img src={plant.image} alt={plant.name} loading="lazy" />
       </div>

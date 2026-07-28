@@ -1,14 +1,128 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import BarChart from '../components/BarChart';
-import { getPlantsByVendor, type Plant } from '../lib/plants';
-import { vendors } from '../lib/vendors';
-import { getSalesSummary } from '../lib/sales';
-import { formatMoney } from '../lib/format';
+import BarChart from '../../../components/BarChart';
+import Modal from '../../../components/Modal';
+import { getPlantsByVendor, type Plant } from '../../../lib/plants';
+import { vendors } from '../../../lib/vendors';
+import { getSalesSummary } from '../../../lib/sales';
+import { formatMoney } from '../../../lib/format';
+import { useLang, type Localized } from '../../../lib/i18n';
 
 const PAGE_SIZE = 5;
+
+const COPY = {
+  es: {
+    pill: 'Vista de demostración',
+    welcome: 'Bienvenido,',
+    viewAs: 'Ver como vivero',
+    reset: 'Restablecer datos',
+    orders: 'Pedidos',
+    revenue: 'Ingresos',
+    avgOrder: 'Pedido promedio',
+    catalog: 'Plantas en catálogo',
+    monthlyRevenue: 'Ingresos mensuales',
+    chartHint: 'Toca un mes para ver el detalle',
+    closeDetail: 'Cerrar detalle ×',
+    topSellers: 'Más vendidas',
+    units: 'unidades',
+    inventory: 'Tu inventario',
+    addPlant: '+ Agregar planta',
+    thPlant: 'Planta',
+    thPrice: 'Precio',
+    thStock: 'Inventario',
+    thStatus: 'Estado',
+    thActions: 'Acciones',
+    edit: 'Editar',
+    remove: 'Eliminar',
+    emptyInventory: 'No hay plantas en tu inventario. Agrega la primera.',
+    showing: (from: number, to: number, total: number) =>
+      `Mostrando ${from}–${to} de ${total}`,
+    pageOf: (page: number, count: number) => `Página ${page} de ${count}`,
+    prev: '← Anterior',
+    next: 'Siguiente →',
+    badgeOut: 'Agotado',
+    badgeLow: 'Poco inventario',
+    badgeOk: 'En venta',
+    modalAdd: 'Agregar planta',
+    modalEdit: 'Editar planta',
+    close: 'Cerrar',
+    fieldName: 'Nombre',
+    fieldPrice: 'Precio',
+    fieldStock: 'Inventario',
+    fieldImage: 'Foto (URL)',
+    fieldDescription: 'Descripción',
+    imagePreview: 'Vista previa',
+    errName: 'El nombre no puede estar vacío.',
+    errPrice: 'El precio debe ser un número válido.',
+    errStock: 'El inventario debe ser un número entero.',
+    cancel: 'Cancelar',
+    save: 'Guardar cambios',
+    add: 'Agregar',
+    deleteTitle: 'Eliminar planta',
+    deleteBody: (name: string) =>
+      `¿Seguro que quieres eliminar ${name} de tu inventario? Puedes recuperarla con «Restablecer datos».`,
+    confirmDelete: 'Eliminar',
+    newPlantDescription: 'Nueva planta agregada durante la demostración.',
+    toBeDefined: 'Por definir.',
+    namePlaceholder: 'Filodendro Brasil',
+  },
+  en: {
+    pill: 'Demo preview',
+    welcome: 'Welcome,',
+    viewAs: 'View as vivero',
+    reset: 'Reset demo data',
+    orders: 'Orders',
+    revenue: 'Revenue',
+    avgOrder: 'Avg. order',
+    catalog: 'Plants listed',
+    monthlyRevenue: 'Monthly revenue',
+    chartHint: 'Click a month to see details',
+    closeDetail: 'Close details ×',
+    topSellers: 'Top sellers',
+    units: 'units',
+    inventory: 'Your inventory',
+    addPlant: '+ Add plant',
+    thPlant: 'Plant',
+    thPrice: 'Price',
+    thStock: 'Stock',
+    thStatus: 'Status',
+    thActions: 'Actions',
+    edit: 'Edit',
+    remove: 'Remove',
+    emptyInventory: 'No plants in your inventory yet. Add the first one.',
+    showing: (from: number, to: number, total: number) =>
+      `Showing ${from}–${to} of ${total}`,
+    pageOf: (page: number, count: number) => `Page ${page} of ${count}`,
+    prev: '← Previous',
+    next: 'Next →',
+    badgeOut: 'Sold out',
+    badgeLow: 'Low stock',
+    badgeOk: 'For sale',
+    modalAdd: 'Add plant',
+    modalEdit: 'Edit plant',
+    close: 'Close',
+    fieldName: 'Name',
+    fieldPrice: 'Price',
+    fieldStock: 'Stock',
+    fieldImage: 'Photo (URL)',
+    fieldDescription: 'Description',
+    imagePreview: 'Preview',
+    errName: 'The name cannot be empty.',
+    errPrice: 'The price must be a valid number.',
+    errStock: 'The stock must be a whole number.',
+    cancel: 'Cancel',
+    save: 'Save changes',
+    add: 'Add',
+    deleteTitle: 'Remove plant',
+    deleteBody: (name: string) =>
+      `Are you sure you want to remove ${name} from your inventory? You can restore it with “Reset demo data”.`,
+    confirmDelete: 'Remove',
+    newPlantDescription: 'New plant added during the demo.',
+    toBeDefined: 'To be defined.',
+    namePlaceholder: 'Philodendron Brasil',
+  },
+};
 
 type ListingOverride = Partial<
   Pick<Plant, 'name' | 'price' | 'stock' | 'image' | 'description'>
@@ -44,17 +158,34 @@ function storageKey(vendorId: string) {
   return `plantera-dashboard-${vendorId}`;
 }
 
+function normalizeLocalized(value: unknown): Localized {
+  if (typeof value === 'string') return { es: value, en: value };
+  const record = (value ?? {}) as Partial<Localized>;
+  const es = record.es ?? record.en ?? '';
+  const en = record.en ?? record.es ?? '';
+  return { es, en };
+}
+
 function loadState(vendorId: string): DashboardState {
   if (typeof window === 'undefined') return EMPTY_STATE;
   const raw = window.localStorage.getItem(storageKey(vendorId));
   if (!raw) return EMPTY_STATE;
   try {
     const parsed = JSON.parse(raw) as Partial<DashboardState>;
-    return {
-      overrides: parsed.overrides ?? {},
-      added: parsed.added ?? [],
-      removed: parsed.removed ?? [],
-    };
+    const overrides: Record<string, ListingOverride> = {};
+    for (const [slug, override] of Object.entries(parsed.overrides ?? {})) {
+      overrides[slug] = {
+        ...override,
+        ...(override.description !== undefined
+          ? { description: normalizeLocalized(override.description) }
+          : {}),
+      };
+    }
+    const added = (parsed.added ?? []).map((plant) => ({
+      ...plant,
+      description: normalizeLocalized(plant.description),
+    }));
+    return { overrides, added, removed: parsed.removed ?? [] };
   } catch {
     return EMPTY_STATE;
   }
@@ -62,12 +193,6 @@ function loadState(vendorId: string): DashboardState {
 
 function saveState(vendorId: string, state: DashboardState) {
   window.localStorage.setItem(storageKey(vendorId), JSON.stringify(state));
-}
-
-function stockBadge(stock: number) {
-  if (stock <= 0) return <span className="badge badge--out">Agotado</span>;
-  if (stock < 8) return <span className="badge badge--low">Poco inventario</span>;
-  return <span className="badge badge--ok">En venta</span>;
 }
 
 function Thumb({ plant }: { plant: Plant }) {
@@ -82,71 +207,22 @@ function Thumb({ plant }: { plant: Plant }) {
   );
 }
 
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal"
-        role="dialog"
-        aria-label={title}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '1rem',
-          }}
-        >
-          <h2 style={{ fontSize: '1.4rem' }}>{title}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar"
-            style={{
-              border: 'none',
-              background: 'none',
-              fontSize: '1.3rem',
-              color: 'var(--muted)',
-              lineHeight: 1,
-            }}
-          >
-            ×
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 export default function DashboardPage() {
+  const { lang } = useLang();
+  const copy = COPY[lang];
+
   const [vendorId, setVendorId] = useState(vendors[0].id);
   const [state, setState] = useState<DashboardState>(EMPTY_STATE);
   const [page, setPage] = useState(1);
   const [draft, setDraft] = useState<ListingDraft | null>(null);
-  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<
+    'errName' | 'errPrice' | 'errStock' | null
+  >(null);
   const [pendingDelete, setPendingDelete] = useState<Plant | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs demo state from localStorage after hydration and on vivero switch
     setState(loadState(vendorId));
     setPage(1);
     setDraft(null);
@@ -174,8 +250,23 @@ export default function DashboardPage() {
   const avgOrder =
     sales && sales.totalSales > 0 ? sales.revenue / sales.totalSales : 0;
 
+  const chartData = useMemo(
+    () =>
+      sales?.monthlyRevenue.map((entry) => ({
+        month: entry.month[lang],
+        revenue: entry.revenue,
+      })) ?? [],
+    [sales, lang],
+  );
+
   const monthDetail =
     selectedMonth !== null ? (sales?.monthlyRevenue[selectedMonth] ?? null) : null;
+
+  const stockBadge = (stock: number) => {
+    if (stock <= 0) return <span className="badge badge--out">{copy.badgeOut}</span>;
+    if (stock < 8) return <span className="badge badge--low">{copy.badgeLow}</span>;
+    return <span className="badge badge--ok">{copy.badgeOk}</span>;
+  };
 
   const commit = (updater: (current: DashboardState) => DashboardState) => {
     setState((current) => {
@@ -193,7 +284,7 @@ export default function DashboardPage() {
       price: plant.price.toFixed(2),
       stock: String(plant.stock),
       image: plant.image,
-      description: plant.description,
+      description: plant.description[lang],
     });
   };
 
@@ -207,39 +298,57 @@ export default function DashboardPage() {
     const name = draft.name.trim();
     const price = Number(draft.price);
     const stock = Number(draft.stock);
+    const descriptionText = draft.description.trim();
 
     if (!name) {
-      setDraftError('El nombre no puede estar vacío.');
+      setDraftError('errName');
       return;
     }
     if (Number.isNaN(price) || price < 0) {
-      setDraftError('El precio debe ser un número válido.');
+      setDraftError('errPrice');
       return;
     }
     if (Number.isNaN(stock) || stock < 0 || !Number.isInteger(stock)) {
-      setDraftError('El inventario debe ser un número entero.');
+      setDraftError('errStock');
       return;
     }
+
+    const existing = draft.slug
+      ? listings.find((item) => item.slug === draft.slug)
+      : undefined;
+    const description: Localized = existing
+      ? { ...existing.description, [lang]: descriptionText }
+      : { es: descriptionText, en: descriptionText };
 
     const fields = {
       name,
       price,
       stock,
       image: draft.image.trim(),
-      description: draft.description.trim(),
+      description,
     };
 
     if (draft.slug === null) {
       const slug = `${name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+      const toBeDefined: Localized = {
+        es: COPY.es.toBeDefined,
+        en: COPY.en.toBeDefined,
+      };
       const plant: Plant = {
         slug,
         vendorId,
         ...fields,
+        description: descriptionText
+          ? description
+          : {
+              es: COPY.es.newPlantDescription,
+              en: COPY.en.newPlantDescription,
+            },
         care: {
-          light: 'Por definir.',
-          water: 'Por definir.',
-          soil: 'Por definir.',
-          commonIssues: 'Por definir.',
+          light: toBeDefined,
+          water: toBeDefined,
+          soil: toBeDefined,
+          commonIssues: toBeDefined,
         },
       };
       commit((current) => ({ ...current, added: [...current.added, plant] }));
@@ -300,12 +409,12 @@ export default function DashboardPage() {
         }}
       >
         <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <span className="pill">Vista de demostración</span>
+          <span className="pill">{copy.pill}</span>
           <h1 style={{ fontSize: 'clamp(2rem, 4vw, 2.7rem)' }}>
-            Bienvenido, {vendor.name}
+            {copy.welcome} {vendor.name}
           </h1>
           <p className="lead" style={{ fontSize: '0.95rem' }}>
-            {vendor.location} — {vendor.tagline}
+            {vendor.location} — {vendor.tagline[lang]}
           </p>
         </div>
         <div
@@ -317,12 +426,12 @@ export default function DashboardPage() {
           }}
         >
           <label className="field" style={{ minWidth: '220px' }}>
-            Ver como vivero
+            {copy.viewAs}
             <select
               value={vendorId}
               onChange={(event) => setVendorId(event.target.value)}
               className="input"
-              style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 'normal' }}
+              style={{ fontWeight: 600 }}
             >
               {vendors.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -336,7 +445,7 @@ export default function DashboardPage() {
             onClick={resetDemoData}
             className="btn btn--ghost btn--small"
           >
-            Restablecer datos
+            {copy.reset}
           </button>
         </div>
       </div>
@@ -349,26 +458,26 @@ export default function DashboardPage() {
         }}
       >
         <div className="card" style={{ display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
-          <span className="eyebrow eyebrow--sage">Pedidos</span>
-          <span className="serif" style={{ fontSize: '2.4rem' }}>
+          <span className="eyebrow eyebrow--sage">{copy.orders}</span>
+          <span className="display" style={{ fontSize: '2.4rem' }}>
             {sales?.totalSales ?? 0}
           </span>
         </div>
         <div className="card" style={{ display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
-          <span className="eyebrow eyebrow--sage">Ingresos</span>
-          <span className="serif" style={{ fontSize: '2.4rem' }}>
+          <span className="eyebrow eyebrow--sage">{copy.revenue}</span>
+          <span className="display" style={{ fontSize: '2.4rem' }}>
             {formatMoney(sales?.revenue ?? 0)}
           </span>
         </div>
         <div className="card" style={{ display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
-          <span className="eyebrow eyebrow--sage">Pedido promedio</span>
-          <span className="serif" style={{ fontSize: '2.4rem' }}>
+          <span className="eyebrow eyebrow--sage">{copy.avgOrder}</span>
+          <span className="display" style={{ fontSize: '2.4rem' }}>
             {formatMoney(avgOrder)}
           </span>
         </div>
         <div className="card" style={{ display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
-          <span className="eyebrow eyebrow--sage">Plantas en catálogo</span>
-          <span className="serif" style={{ fontSize: '2.4rem' }}>
+          <span className="eyebrow eyebrow--sage">{copy.catalog}</span>
+          <span className="display" style={{ fontSize: '2.4rem' }}>
             {listings.length}
           </span>
         </div>
@@ -385,14 +494,14 @@ export default function DashboardPage() {
             marginBottom: '1rem',
           }}
         >
-          <span className="eyebrow eyebrow--sage">Ingresos mensuales</span>
+          <span className="eyebrow eyebrow--sage">{copy.monthlyRevenue}</span>
           <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-            Toca un mes para ver el detalle
+            {copy.chartHint}
           </span>
         </div>
         {sales && (
           <BarChart
-            data={sales.monthlyRevenue}
+            data={chartData}
             selectedIndex={selectedMonth}
             onSelect={setSelectedMonth}
           />
@@ -416,8 +525,8 @@ export default function DashboardPage() {
                 flexWrap: 'wrap',
               }}
             >
-              <h3 className="serif" style={{ fontSize: '1.4rem' }}>
-                {monthDetail.monthLabel}
+              <h3 className="display" style={{ fontSize: '1.4rem' }}>
+                {monthDetail.monthLabel[lang]}
               </h3>
               <button
                 type="button"
@@ -430,7 +539,7 @@ export default function DashboardPage() {
                   fontWeight: 600,
                 }}
               >
-                Cerrar detalle ×
+                {copy.closeDetail}
               </button>
             </div>
             <div
@@ -441,26 +550,26 @@ export default function DashboardPage() {
               }}
             >
               <div style={{ display: 'grid', gap: '0.2rem' }}>
-                <span className="eyebrow eyebrow--sage">Ingresos</span>
-                <span className="serif" style={{ fontSize: '1.5rem' }}>
+                <span className="eyebrow eyebrow--sage">{copy.revenue}</span>
+                <span className="display" style={{ fontSize: '1.5rem' }}>
                   {formatMoney(monthDetail.revenue)}
                 </span>
               </div>
               <div style={{ display: 'grid', gap: '0.2rem' }}>
-                <span className="eyebrow eyebrow--sage">Pedidos</span>
-                <span className="serif" style={{ fontSize: '1.5rem' }}>
+                <span className="eyebrow eyebrow--sage">{copy.orders}</span>
+                <span className="display" style={{ fontSize: '1.5rem' }}>
                   {monthDetail.orders}
                 </span>
               </div>
               <div style={{ display: 'grid', gap: '0.2rem' }}>
-                <span className="eyebrow eyebrow--sage">Pedido promedio</span>
-                <span className="serif" style={{ fontSize: '1.5rem' }}>
+                <span className="eyebrow eyebrow--sage">{copy.avgOrder}</span>
+                <span className="display" style={{ fontSize: '1.5rem' }}>
                   {formatMoney(monthDetail.revenue / monthDetail.orders)}
                 </span>
               </div>
             </div>
             <div style={{ display: 'grid', gap: '0.5rem' }}>
-              <span className="eyebrow eyebrow--sage">Más vendidas</span>
+              <span className="eyebrow eyebrow--sage">{copy.topSellers}</span>
               <div style={{ display: 'grid', gap: '0.4rem' }}>
                 {monthDetail.topPlants.map((item) => (
                   <div
@@ -474,7 +583,7 @@ export default function DashboardPage() {
                   >
                     <span style={{ fontWeight: 600 }}>{item.name}</span>
                     <span style={{ color: 'var(--muted)' }}>
-                      {item.units} unidades
+                      {item.units} {copy.units}
                     </span>
                   </div>
                 ))}
@@ -495,20 +604,20 @@ export default function DashboardPage() {
             marginBottom: '1.25rem',
           }}
         >
-          <h2 style={{ fontSize: '1.4rem' }}>Tu inventario</h2>
+          <h2 style={{ fontSize: '1.4rem' }}>{copy.inventory}</h2>
           <button type="button" onClick={openAdd} className="btn btn--small">
-            + Agregar planta
+            {copy.addPlant}
           </button>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="table">
             <thead>
               <tr>
-                <th>Planta</th>
-                <th>Precio</th>
-                <th>Inventario</th>
-                <th>Estado</th>
-                <th style={{ textAlign: 'right' }}>Acciones</th>
+                <th>{copy.thPlant}</th>
+                <th>{copy.thPrice}</th>
+                <th>{copy.thStock}</th>
+                <th>{copy.thStatus}</th>
+                <th style={{ textAlign: 'right' }}>{copy.thActions}</th>
               </tr>
             </thead>
             <tbody>
@@ -546,14 +655,14 @@ export default function DashboardPage() {
                         onClick={() => openEdit(plant)}
                         className="btn btn--ghost btn--small"
                       >
-                        Editar
+                        {copy.edit}
                       </button>
                       <button
                         type="button"
                         onClick={() => setPendingDelete(plant)}
                         className="btn btn--danger btn--small"
                       >
-                        Eliminar
+                        {copy.remove}
                       </button>
                     </span>
                   </td>
@@ -561,8 +670,15 @@ export default function DashboardPage() {
               ))}
               {listings.length === 0 && (
                 <tr>
-                  <td colSpan={5} style={{ color: 'var(--muted)', textAlign: 'center', padding: '2rem 0' }}>
-                    No hay plantas en tu inventario. Agrega la primera.
+                  <td
+                    colSpan={5}
+                    style={{
+                      color: 'var(--muted)',
+                      textAlign: 'center',
+                      padding: '2rem 0',
+                    }}
+                  >
+                    {copy.emptyInventory}
                   </td>
                 </tr>
               )}
@@ -581,9 +697,11 @@ export default function DashboardPage() {
             }}
           >
             <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
-              Mostrando {(currentPage - 1) * PAGE_SIZE + 1}–
-              {Math.min(currentPage * PAGE_SIZE, listings.length)} de{' '}
-              {listings.length}
+              {copy.showing(
+                (currentPage - 1) * PAGE_SIZE + 1,
+                Math.min(currentPage * PAGE_SIZE, listings.length),
+                listings.length,
+              )}
             </span>
             <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <button
@@ -592,10 +710,10 @@ export default function DashboardPage() {
                 disabled={currentPage <= 1}
                 onClick={() => setPage(currentPage - 1)}
               >
-                ← Anterior
+                {copy.prev}
               </button>
               <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
-                Página {currentPage} de {pageCount}
+                {copy.pageOf(currentPage, pageCount)}
               </span>
               <button
                 type="button"
@@ -603,7 +721,7 @@ export default function DashboardPage() {
                 disabled={currentPage >= pageCount}
                 onClick={() => setPage(currentPage + 1)}
               >
-                Siguiente →
+                {copy.next}
               </button>
             </span>
           </div>
@@ -612,24 +730,25 @@ export default function DashboardPage() {
 
       {draft && (
         <Modal
-          title={draft.slug === null ? 'Agregar planta' : 'Editar planta'}
+          title={draft.slug === null ? copy.modalAdd : copy.modalEdit}
+          closeLabel={copy.close}
           onClose={() => setDraft(null)}
         >
           <div style={{ display: 'grid', gap: '1rem' }}>
             {draft.image.trim() && (
               <span className="thumb" style={{ width: 96, height: 96 }}>
-                <img src={draft.image.trim()} alt="Vista previa" />
+                <img src={draft.image.trim()} alt={copy.imagePreview} />
               </span>
             )}
             <label className="field">
-              Nombre
+              {copy.fieldName}
               <input
                 className="input"
                 value={draft.name}
                 onChange={(event) =>
                   setDraft({ ...draft, name: event.target.value })
                 }
-                placeholder="Filodendro Brasil"
+                placeholder={copy.namePlaceholder}
               />
             </label>
             <div
@@ -640,7 +759,7 @@ export default function DashboardPage() {
               }}
             >
               <label className="field">
-                Precio
+                {copy.fieldPrice}
                 <input
                   className="input"
                   type="number"
@@ -654,7 +773,7 @@ export default function DashboardPage() {
                 />
               </label>
               <label className="field">
-                Inventario
+                {copy.fieldStock}
                 <input
                   className="input"
                   type="number"
@@ -668,7 +787,7 @@ export default function DashboardPage() {
               </label>
             </div>
             <label className="field">
-              Foto (URL)
+              {copy.fieldImage}
               <input
                 className="input"
                 value={draft.image}
@@ -679,7 +798,7 @@ export default function DashboardPage() {
               />
             </label>
             <label className="field">
-              Descripción
+              {copy.fieldDescription}
               <textarea
                 className="input"
                 rows={3}
@@ -687,12 +806,12 @@ export default function DashboardPage() {
                 onChange={(event) =>
                   setDraft({ ...draft, description: event.target.value })
                 }
-                style={{ resize: 'vertical', fontFamily: 'inherit' }}
+                style={{ resize: 'vertical' }}
               />
             </label>
             {draftError && (
               <p style={{ color: '#9c4a3c', fontSize: '0.9rem', fontWeight: 600 }}>
-                {draftError}
+                {copy[draftError]}
               </p>
             )}
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
@@ -701,10 +820,10 @@ export default function DashboardPage() {
                 onClick={() => setDraft(null)}
                 className="btn btn--ghost btn--small"
               >
-                Cancelar
+                {copy.cancel}
               </button>
               <button type="button" onClick={saveDraft} className="btn btn--small">
-                {draft.slug === null ? 'Agregar' : 'Guardar cambios'}
+                {draft.slug === null ? copy.add : copy.save}
               </button>
             </div>
           </div>
@@ -713,14 +832,13 @@ export default function DashboardPage() {
 
       {pendingDelete && (
         <Modal
-          title="Eliminar planta"
+          title={copy.deleteTitle}
+          closeLabel={copy.close}
           onClose={() => setPendingDelete(null)}
         >
           <div style={{ display: 'grid', gap: '1.25rem' }}>
             <p className="lead" style={{ fontSize: '0.98rem' }}>
-              ¿Seguro que quieres eliminar{' '}
-              <strong style={{ color: 'var(--ink)' }}>{pendingDelete.name}</strong>{' '}
-              de tu inventario? Puedes recuperarla con «Restablecer datos».
+              {copy.deleteBody(pendingDelete.name)}
             </p>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <button
@@ -728,14 +846,14 @@ export default function DashboardPage() {
                 onClick={() => setPendingDelete(null)}
                 className="btn btn--ghost btn--small"
               >
-                Cancelar
+                {copy.cancel}
               </button>
               <button
                 type="button"
                 onClick={confirmDelete}
                 className="btn btn--danger btn--small"
               >
-                Eliminar
+                {copy.confirmDelete}
               </button>
             </div>
           </div>

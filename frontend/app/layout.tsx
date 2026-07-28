@@ -1,11 +1,11 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Fraunces, Inter } from 'next/font/google';
-import Header from './components/Header';
-import Footer from './components/Footer';
+import { Tenor_Sans, Inter } from 'next/font/google';
+import { LanguageProvider } from './lib/i18n';
 
-const fraunces = Fraunces({
+const tenorSans = Tenor_Sans({
+  weight: '400',
   subsets: ['latin'],
   variable: '--font-display',
   display: 'swap',
@@ -29,11 +29,9 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="es" className={`${fraunces.variable} ${inter.variable}`}>
+    <html lang="es" className={`${tenorSans.variable} ${inter.variable}`}>
       <body>
-        <Header />
-        <main>{children}</main>
-        <Footer />
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );

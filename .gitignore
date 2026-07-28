@@ -12,10 +12,14 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Vendor-uploaded listing photos (local storage; not source)
+backend/uploads/
+
 # Node and Next.js
 node_modules/
 .next/
 out/
+*.tsbuildinfo
 
 # Environment
 .env

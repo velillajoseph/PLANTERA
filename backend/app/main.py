@@ -1,12 +1,15 @@
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import Optional
 
 import structlog
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session, select
 
+from .catalog import router as catalog_router
 from .db import engine, init_db
 from .logging_config import configure_logging
 from .models import (
@@ -23,12 +26,12 @@ from .models import (
     CustomerRegistrationResponse,
     CustomerResendRequest,
     CustomerVerificationRequest,
-    Feedback,
-    FeedbackCreate,
-    FeedbackRead,
     FavoritePlant,
     FavoritePlantCreate,
     FavoritePlantRead,
+    Feedback,
+    FeedbackCreate,
+    FeedbackRead,
     InventoryItem,
     InventoryItemCreate,
     InventoryItemPublic,
@@ -44,6 +47,8 @@ from .security import (
     hash_verification_code,
     verification_expiration_time,
 )
+from .storage import UPLOAD_DIR, ensure_upload_dir
+from .vendor import router as vendor_router
 
 logger = structlog.get_logger()
 
@@ -52,6 +57,7 @@ logger = structlog.get_logger()
 async def lifespan(app: FastAPI):
     configure_logging()
     init_db()
+    ensure_upload_dir()
     logger.info("app_started", database_url=os.getenv("DATABASE_URL", "sqlite"))
     yield
     logger.info("app_stopped")
@@ -63,6 +69,13 @@ def get_session():
 
 
 app = FastAPI(title="Plantera API", lifespan=lifespan)
+app.include_router(vendor_router)
+app.include_router(catalog_router)
+
+# Vendor-uploaded listing photos. Created here too because the mount is
+# evaluated at import time, before the lifespan hook runs.
+ensure_upload_dir()
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 frontend_origins = os.getenv("FRONTEND_ORIGINS", "http://localhost:3000")
 allowed_origins = [origin.strip() for origin in frontend_origins.split(",") if origin.strip()]
@@ -103,7 +116,7 @@ def log_verification(email: str, code: str) -> None:
     logger.info("verification_code_issued", email=email, code=code)
 
 
-def build_registration_response(customer: CustomerAccount, code: str | None = None):
+def build_registration_response(customer: CustomerAccount, code: Optional[str] = None):
     show_preview = os.getenv("SHOW_VERIFICATION_CODE_IN_RESPONSE", "true").lower() == "true"
     preview = code if show_preview else None
     return CustomerRegistrationResponse(
@@ -219,17 +232,19 @@ def resend_verification(payload: CustomerResendRequest, session: Session = Depen
 
 @app.get("/api/customers", response_model=list[CustomerPublic])
 def list_customers(session: Session = Depends(get_session)):
-    customers = session.exec(select(CustomerAccount).order_by(CustomerAccount.created_at.desc())).all()
+    customers = session.exec(
+        select(CustomerAccount).order_by(CustomerAccount.created_at.desc())
+    ).all()
     logger.info("customers_listed", count=len(customers))
     return [CustomerPublic.from_orm(customer) for customer in customers]
 
 
 def build_plant_preview(
     item: InventoryItem,
-    store_lookup: dict[int, StoreProfile] | None = None,
-    session: Session | None = None,
+    store_lookup: Optional[dict[int, StoreProfile]] = None,
+    session: Optional[Session] = None,
 ) -> PlantPreview:
-    store_name: str | None = None
+    store_name: Optional[str] = None
     if store_lookup and item.store_id in store_lookup:
         store_name = store_lookup[item.store_id].name
     elif session:
@@ -285,9 +300,7 @@ def build_favorite_response(
 
 @app.post("/api/admins", response_model=AdminRead, status_code=201)
 def create_admin(payload: AdminCreate, session: Session = Depends(get_session)):
-    existing = session.exec(
-        select(AdminProfile).where(AdminProfile.email == payload.email)
-    ).first()
+    existing = session.exec(select(AdminProfile).where(AdminProfile.email == payload.email)).first()
     if existing:
         raise HTTPException(status_code=400, detail="Admin already exists for that email")
 
@@ -312,7 +325,9 @@ def list_admins(session: Session = Depends(get_session)):
 
 
 @app.patch("/api/admins/{admin_id}/view-mode", response_model=AdminRead)
-def update_admin_view(admin_id: int, payload: AdminViewUpdate, session: Session = Depends(get_session)):
+def update_admin_view(
+    admin_id: int, payload: AdminViewUpdate, session: Session = Depends(get_session)
+):
     admin = session.get(AdminProfile, admin_id)
     if not admin:
         raise HTTPException(status_code=404, detail="Admin not found")
@@ -375,7 +390,9 @@ def update_store(store_id: int, payload: StoreUpdate, session: Session = Depends
 
 
 @app.post("/api/stores/{store_id}/inventory", response_model=InventoryItemPublic, status_code=201)
-def add_inventory_item(store_id: int, payload: InventoryItemCreate, session: Session = Depends(get_session)):
+def add_inventory_item(
+    store_id: int, payload: InventoryItemCreate, session: Session = Depends(get_session)
+):
     store = session.get(StoreProfile, store_id)
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
@@ -395,13 +412,11 @@ def list_inventory(store_id: int, session: Session = Depends(get_session)):
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
 
-    items = (
-        session.exec(
-            select(InventoryItem)
-            .where(InventoryItem.store_id == store_id)
-            .order_by(InventoryItem.created_at.desc())
-        ).all()
-    )
+    items = session.exec(
+        select(InventoryItem)
+        .where(InventoryItem.store_id == store_id)
+        .order_by(InventoryItem.created_at.desc())
+    ).all()
     logger.info("inventory_listed", store_id=store_id, count=len(items))
     return items
 
@@ -414,7 +429,9 @@ def list_plants(session: Session = Depends(get_session)):
     if store_ids:
         store_lookup = {
             store.id: store
-            for store in session.exec(select(StoreProfile).where(StoreProfile.id.in_(store_ids))).all()
+            for store in session.exec(
+                select(StoreProfile).where(StoreProfile.id.in_(store_ids))
+            ).all()
         }
 
     previews = [build_plant_preview(item, store_lookup=store_lookup) for item in items]
@@ -469,9 +486,7 @@ def list_cart(customer_id: int, session: Session = Depends(get_session)):
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    cart_items = session.exec(
-        select(CartItem).where(CartItem.customer_id == customer_id)
-    ).all()
+    cart_items = session.exec(select(CartItem).where(CartItem.customer_id == customer_id)).all()
     inventory_ids = [item.inventory_item_id for item in cart_items]
 
     inventory_lookup: dict[int, InventoryItem] = {}
@@ -506,7 +521,9 @@ def list_cart(customer_id: int, session: Session = Depends(get_session)):
     response_model=FavoritePlantRead,
     status_code=201,
 )
-def add_favorite(customer_id: int, payload: FavoritePlantCreate, session: Session = Depends(get_session)):
+def add_favorite(
+    customer_id: int, payload: FavoritePlantCreate, session: Session = Depends(get_session)
+):
     customer = session.get(CustomerAccount, customer_id)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")

@@ -1,13 +1,20 @@
-import Link from 'next/link';
+'use client';
 
-const navLinks = [
-  { href: '/', label: 'Inicio' },
-  { href: '/#coleccion', label: 'Plantas' },
-  { href: '/#para-viveros', label: 'Para Viveros' },
-  { href: '/#contacto', label: 'Contacto' },
+import Link from 'next/link';
+import Logo from './Logo';
+import LangToggle from './LangToggle';
+import { useLang } from '../lib/i18n';
+
+const NAV = [
+  { href: '/pitch', label: { es: 'Inicio', en: 'Home' } },
+  { href: '/pitch#coleccion', label: { es: 'Plantas', en: 'Plants' } },
+  { href: '/pitch#para-viveros', label: { es: 'Para Viveros', en: 'For Viveros' } },
+  { href: '/pitch#contacto', label: { es: 'Contacto', en: 'Contact' } },
 ];
 
 export default function Header() {
+  const { lang } = useLang();
+
   return (
     <header
       style={{
@@ -31,13 +38,7 @@ export default function Header() {
           paddingBottom: '1.1rem',
         }}
       >
-        <Link
-          href="/"
-          className="serif"
-          style={{ fontSize: '1.05rem', letterSpacing: '0.32em' }}
-        >
-          PLANTERA
-        </Link>
+        <Logo href="/pitch" />
         <nav
           style={{
             display: 'flex',
@@ -48,19 +49,22 @@ export default function Header() {
             flexWrap: 'wrap',
           }}
         >
-          {navLinks.map((link) => (
+          {NAV.map((link) => (
             <Link key={link.href} href={link.href}>
-              {link.label}
+              {link.label[lang]}
             </Link>
           ))}
         </nav>
-        <Link
-          href="/dashboard"
-          className="btn btn--ghost"
-          style={{ padding: '0.55rem 1.2rem', fontSize: '0.82rem' }}
-        >
-          Demo para viveros
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <LangToggle />
+          <Link
+            href="/acceso/login"
+            className="btn btn--ghost"
+            style={{ padding: '0.55rem 1.2rem', fontSize: '0.82rem' }}
+          >
+            {lang === 'es' ? 'Acceso viveros' : 'Vendor login'}
+          </Link>
+        </div>
       </div>
     </header>
   );
