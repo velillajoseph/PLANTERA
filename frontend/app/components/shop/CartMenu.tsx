@@ -16,7 +16,7 @@ const COPY = {
     open: 'Abrir carrito',
     title: 'Tu carrito',
     empty: 'Tu carrito está vacío.',
-    emptyCta: 'Explorar plantas',
+    emptyCta: 'Explorar productos',
     subtotal: 'Subtotal',
     shippingNote: 'Envío y coordinación se calculan al finalizar.',
     checkout: 'Finalizar compra',
@@ -31,7 +31,7 @@ const COPY = {
     open: 'Open cart',
     title: 'Your cart',
     empty: 'Your cart is empty.',
-    emptyCta: 'Browse plants',
+    emptyCta: 'Browse products',
     subtotal: 'Subtotal',
     shippingNote: 'Shipping and coordination are calculated at checkout.',
     checkout: 'Checkout',
@@ -131,7 +131,7 @@ export default function CartMenu() {
                   </span>
                   <div style={{ flex: 1, display: 'grid', gap: '0.3rem' }}>
                     <Link
-                      href={`/plant/${line.id}`}
+                      href={`/product/${line.id}`}
                       onClick={closeNow}
                       style={{ fontSize: '0.92rem', fontWeight: 600, lineHeight: 1.3 }}
                     >

@@ -88,7 +88,7 @@ export default function CarePage() {
       <section className="section" style={{ paddingBottom: '2rem' }}>
         <div className="container" style={{ display: 'grid', gap: '1.25rem', maxWidth: '46rem' }}>
           <span className="eyebrow">{copy.eyebrow}</span>
-          <h1 style={{ fontSize: 'clamp(2.1rem, 4.5vw, 3rem)' }}>{copy.title}</h1>
+          <h1 className="page-title">{copy.title}</h1>
           <p className="lead" style={{ fontSize: '1.05rem' }}>
             {copy.lead}
           </p>
@@ -97,11 +97,11 @@ export default function CarePage() {
 
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="container" style={{ display: 'grid', gap: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.6rem' }}>{copy.basicsTitle}</h2>
+          <h2 className="section-title">{copy.basicsTitle}</h2>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))',
               gap: '1.25rem',
             }}
           >
@@ -123,7 +123,7 @@ export default function CarePage() {
       <section className="section">
         <div className="container" style={{ display: 'grid', gap: '1.5rem' }}>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
-            <h2 style={{ fontSize: '1.8rem' }}>{copy.guidesTitle}</h2>
+            <h2 className="section-title">{copy.guidesTitle}</h2>
             <p className="lead" style={{ fontSize: '0.95rem' }}>
               {copy.guidesLead}
             </p>
@@ -145,7 +145,7 @@ export default function CarePage() {
           <div key={guide.genus} className="card reveal" style={{ display: 'grid', gap: '1.5rem' }}>
             <div style={{ display: 'grid', gap: '0.5rem' }}>
               <span className="eyebrow eyebrow--sage">{guide.common[lang]}</span>
-              <h3 style={{ fontSize: '1.7rem' }}>{guide.genus}</h3>
+              <h3 className="section-title">{guide.genus}</h3>
               <p className="lead" style={{ fontSize: '0.98rem' }}>
                 {guide.summary[lang]}
               </p>
@@ -164,7 +164,7 @@ export default function CarePage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(230px, 100%), 1fr))',
                 gap: '0 2.5rem',
               }}
             >
@@ -227,7 +227,7 @@ export default function CarePage() {
             maxWidth: '36rem',
           }}
         >
-          <h2 style={{ fontSize: '1.6rem' }}>{copy.ctaTitle}</h2>
+          <h2 className="section-title">{copy.ctaTitle}</h2>
           <p className="lead">{copy.ctaCopy}</p>
           <Link href="/contact" className="btn btn--ghost">
             {copy.ctaButton}

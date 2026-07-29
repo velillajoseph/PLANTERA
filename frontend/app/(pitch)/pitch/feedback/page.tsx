@@ -3,9 +3,9 @@ import FeedbackForm from '../../../components/FeedbackForm';
 export default function FeedbackPage() {
   return (
     <section
+      className="container section"
       style={{
         maxWidth: '960px',
-        margin: '0 auto',
         display: 'grid',
         gap: '1.5rem',
       }}

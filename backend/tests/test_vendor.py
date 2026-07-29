@@ -1,12 +1,14 @@
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Generator
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
+from app.auth import SESSION_HEADER
 from app.main import app, get_session
-from app.models import InventoryItem, Order, OrderItem, StoreProfile
-from app.security import hash_vendor_password
+from app.models import InventoryItem, Order, OrderItem, StoreProfile, VendorSession
+from app.security import hash_password
 from app.vendor import get_session as vendor_get_session
 
 
@@ -34,12 +36,12 @@ def setup_module(module):
         store = StoreProfile(
             name="Vivero Test",
             email="test@plantera.pr",
-            password_hash=hash_vendor_password("secret123"),
+            password_hash=hash_password("secret123"),
         )
         other = StoreProfile(
             name="Otro Vivero",
             email="otro@plantera.pr",
-            password_hash=hash_vendor_password("secret123"),
+            password_hash=hash_password("secret123"),
         )
         session.add(store)
         session.add(other)
@@ -118,6 +120,51 @@ def test_login_returns_token_and_profile():
 
 def test_inventory_requires_auth():
     assert client.get("/api/vendor/inventory").status_code == 401
+
+
+def test_authenticated_response_advertises_session_expiry():
+    # The browser's idle timer re-syncs off this header, so its absence is a
+    # silent failure — CORS expose_headers has to keep letting it through.
+    response = client.get("/api/vendor/me", headers=auth(login()))
+    assert response.status_code == 200
+    assert response.headers.get(SESSION_HEADER)
+
+
+def test_idle_session_expires():
+    token = login()
+    engine = get_test_engine()
+    with Session(engine) as session:
+        row = session.exec(select(VendorSession).where(VendorSession.token == token)).one()
+        row.expires_at = datetime.utcnow() - timedelta(seconds=1)
+        session.add(row)
+        session.commit()
+
+    assert client.get("/api/vendor/me", headers=auth(token)).status_code == 401
+
+
+def test_activity_slides_the_window_but_not_on_every_request():
+    token = login()
+    engine = get_test_engine()
+
+    # Back-date the expiry so the next request is past the write threshold.
+    with Session(engine) as session:
+        row = session.exec(select(VendorSession).where(VendorSession.token == token)).one()
+        row.expires_at = datetime.utcnow() + timedelta(minutes=5)
+        session.add(row)
+        session.commit()
+        stale = row.expires_at
+
+    assert client.get("/api/vendor/me", headers=auth(token)).status_code == 200
+    with Session(engine) as session:
+        row = session.exec(select(VendorSession).where(VendorSession.token == token)).one()
+        slid = row.expires_at
+    assert slid > stale
+
+    # Immediately again: inside TOUCH_INTERVAL_SECONDS, so no second write.
+    assert client.get("/api/vendor/me", headers=auth(token)).status_code == 200
+    with Session(engine) as session:
+        row = session.exec(select(VendorSession).where(VendorSession.token == token)).one()
+        assert row.expires_at == slid
 
 
 def test_inventory_crud_and_ownership():
@@ -345,3 +392,74 @@ def test_logout_revokes_session():
     assert client.get("/api/vendor/me", headers=auth(token)).status_code == 200
     assert client.post("/api/vendor/logout", headers=auth(token)).status_code == 204
     assert client.get("/api/vendor/me", headers=auth(token)).status_code == 401
+
+
+# --- discounts ------------------------------------------------------------------
+
+
+def test_discount_persists_but_the_vendor_price_stays_the_list_price():
+    """The canary for the two deliberate meanings of `price`.
+
+    InventoryItemPublic.price is what the vivero typed; CatalogItem.price is
+    what the shopper pays. If this ever returns the discounted number, the
+    portal is editing a value it did not set.
+    """
+    token = login()
+    created = client.post(
+        "/api/vendor/inventory",
+        headers=auth(token),
+        json={"plant_name": "Calathea", "price": 40.0, "stock": 4},
+    )
+    item_id = created.json()["id"]
+
+    updated = client.patch(
+        f"/api/vendor/inventory/{item_id}",
+        headers=auth(token),
+        json={"discount_percent": 25},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["discount_percent"] == 25
+    assert updated.json()["price"] == 40.0
+
+
+def test_discount_percent_is_bounded():
+    token = login()
+    for bad in (95, -5, 101):
+        response = client.patch(
+            f"/api/vendor/inventory/{item_id}",  # noqa: F821 - set in setup_module
+            headers=auth(token),
+            json={"discount_percent": bad},
+        )
+        assert response.status_code == 422, bad
+
+
+def test_creating_a_free_item_is_rejected():
+    """Behaviour change: InventoryItemCreate.price had no gt=0 validator, so a
+    zero-price item used to be accepted and would list at the $0.01 floor."""
+    response = client.post(
+        "/api/vendor/inventory",
+        headers=auth(login()),
+        json={"plant_name": "Gratis", "price": 0, "stock": 1},
+    )
+    assert response.status_code == 422
+
+
+def test_store_wide_discount_round_trips_through_the_profile():
+    token = login()
+    response = client.patch(
+        "/api/vendor/me",
+        headers=auth(token),
+        json={"store_discount_percent": 15},
+    )
+    assert response.status_code == 200
+    assert response.json()["store_discount_percent"] == 15
+    assert client.get("/api/vendor/me", headers=auth(token)).json()["store_discount_percent"] == 15
+
+
+def test_store_wide_discount_is_bounded():
+    response = client.patch(
+        "/api/vendor/me",
+        headers=auth(login()),
+        json={"store_discount_percent": 91},
+    )
+    assert response.status_code == 422

@@ -14,6 +14,27 @@
   --line: #e4ded2;
   --muted: #6b7267;
   --cream: #f3efe6;
+  /* One source of truth for horizontal breathing room. */
+  --gutter: 1.5rem;
+
+  /* Motion. One easing curve across the whole product — surfaces should feel
+     like they belong to the same object, so nothing here gets a bespoke
+     bezier. Durations follow what an element is doing, not how big it is. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 0.18s; /* colour and state swaps */
+  --dur: 0.22s; /* small enters and exits */
+  --dur-panel: 0.28s; /* dropdowns, backdrops */
+  --dur-drawer: 0.32s; /* full-height slide-ins */
+  --dur-slow: 0.6s; /* image scale on hover */
+
+  --radius-panel: 14px;
+  --radius-card: 16px;
+  --radius-frame: 20px;
+  --radius-pill: 999px;
+
+  --shadow-panel: 0 24px 60px rgba(22, 36, 28, 0.16);
+  --shadow-modal: 0 30px 80px rgba(22, 36, 28, 0.25);
+  --shadow-lift: 0 18px 40px rgba(22, 36, 28, 0.1);
 }
 
 * {
@@ -109,30 +130,41 @@ img {
   /* Plain gutter is the guaranteed floor. The notch-aware version lives in an
      @supports block below — duplicate declarations get collapsed by the CSS
      minifier, which previously left the page with no gutter at all. */
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
   /* Grid and flex children default to min-width: auto, so a wide table or a
      nowrap row would stretch its track and push the page sideways instead of
      scrolling inside it. This one line prevents that class of bug. */
   min-width: 0;
 }
 
+/* Pages use `.container` as a grid, and a grid item's automatic minimum is its
+   min-content — so one wide descendant (a <select> sized to its longest option,
+   a long word) can hold the whole page wider than the screen. Direct children
+   may always shrink; anything that genuinely needs to be wide scrolls inside
+   its own `.scroll-x`. */
+.container > * {
+  min-width: 0;
+}
+
 @supports (padding: max(0px)) {
   .container {
-    padding-left: max(1.5rem, env(safe-area-inset-left));
-    padding-right: max(1.5rem, env(safe-area-inset-right));
+    padding-left: max(var(--gutter), env(safe-area-inset-left));
+    padding-right: max(var(--gutter), env(safe-area-inset-right));
   }
 }
 
 @media (min-width: 1024px) {
-  .container {
-    padding-left: 1.75rem;
-    padding-right: 1.75rem;
+  :root {
+    --gutter: 1.75rem;
   }
 }
 
+/* padding-block, never the `padding` shorthand: pages render
+   `class="container section"`, and a shorthand here would reset the
+   container's horizontal gutter to zero. That bug shipped once already. */
 .section {
-  padding: 5rem 0;
+  padding-block: 5rem;
 }
 
 /* Any horizontally scrollable region. Pairs the scroll with min-width: 0 so
@@ -163,6 +195,28 @@ img {
   color: var(--muted);
   font-size: 1.05rem;
   line-height: 1.7;
+}
+
+/**
+ * The page's main heading.
+ *
+ * A plain `clamp(2rem, 4.5vw, 2.8rem)` cannot do this job: at 390px the vw term
+ * is only ~18px, so every phone lands on the 2rem floor and headings never get
+ * smaller than desktop's lower bound. Adding a rem base to the middle term
+ * makes the curve actually pass through a sensible phone size — ~27px at 390px,
+ * ~36px at 768px, capped at 44.8px.
+ *
+ * Pages must use this class rather than an inline font-size: an inline style
+ * outranks every stylesheet rule, so a per-page value cannot be corrected by a
+ * media query later.
+ */
+.page-title {
+  font-size: clamp(1.7rem, 1.1rem + 2.4vw, 2.8rem);
+}
+
+/** A section heading within a page. Same fluid curve, one step down. */
+.section-title {
+  font-size: clamp(1.35rem, 0.95rem + 1.6vw, 2.1rem);
 }
 
 /* ----------------------------------------------------------------- buttons */
@@ -228,6 +282,108 @@ img {
   border: 0;
   border-top: 1px solid var(--line);
   margin: 0;
+}
+
+/* Product detail: image, then buy controls. The gap is generous on desktop
+   where they sit side by side, and tight on a phone where they stack. */
+.detail-stack {
+  display: grid;
+  gap: 3.5rem;
+}
+
+/* ---- explore cards -------------------------------------------------------
+   A category card that fills with brand green on hover. The fill is a
+   pseudo-element wiping up from the bottom rather than a background-color
+   transition: colour interpolation looks flat, a wipe reads as deliberate.
+   Only transform and opacity animate, so it stays on the compositor. */
+
+.explore-card {
+  position: relative;
+  display: grid;
+  gap: 0.4rem;
+  align-content: start;
+  overflow: hidden;
+  /* Contains the fill's negative z-index, so it paints above the card's own
+     background but below the text instead of disappearing behind the card. */
+  isolation: isolate;
+  transition:
+    transform var(--dur-panel) var(--ease-out),
+    box-shadow var(--dur-panel) var(--ease-out),
+    border-color var(--dur-panel) var(--ease-out);
+}
+
+.explore-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(155deg, var(--green-700), var(--green-900));
+  transform: translateY(100%);
+  transition: transform var(--dur-panel) var(--ease-out);
+}
+
+.explore-card:hover,
+.explore-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: var(--green-900);
+  box-shadow: var(--shadow-lift);
+}
+
+.explore-card:hover::before,
+.explore-card:focus-visible::before {
+  transform: translateY(0);
+}
+
+.explore-card__title {
+  font-size: 1.15rem;
+  /* Slightly slower than the wipe so the text changes as the green arrives
+     under it, not before. */
+  transition: color var(--dur-panel) ease var(--dur-fast);
+}
+
+.explore-card__copy {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--muted);
+  transition: color var(--dur-panel) ease var(--dur-fast);
+}
+
+.explore-card:hover .explore-card__title,
+.explore-card:focus-visible .explore-card__title {
+  color: var(--cream);
+}
+
+.explore-card:hover .explore-card__copy,
+.explore-card:focus-visible .explore-card__copy {
+  color: rgba(243, 239, 230, 0.78);
+}
+
+/* Sits in reserved space (padding-bottom on the card) so revealing it never
+   shifts the copy above. */
+.explore-card__arrow {
+  margin-top: 0.35rem;
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--gold);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition:
+    opacity var(--dur) var(--ease-out) var(--dur-fast),
+    transform var(--dur) var(--ease-out) var(--dur-fast);
+}
+
+.explore-card:hover .explore-card__arrow,
+.explore-card:focus-visible .explore-card__arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* No hover on touch: show the arrow so the card still reads as tappable. */
+@media (hover: none) {
+  .explore-card__arrow {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ------------------------------------------------------------ image frames */
@@ -306,6 +462,11 @@ img {
   text-transform: none;
   letter-spacing: normal;
   transition: border-color 0.15s ease;
+  /* A native <select> takes its intrinsic width from its longest option, and a
+     grid/flex item's automatic minimum is that intrinsic width — so a vivero
+     called "Vivero Casa Tropical" was single-handedly holding the shop page
+     284px wide. width:100% alone does not override an automatic minimum. */
+  min-width: 0;
 }
 
 .input:focus {
@@ -321,6 +482,7 @@ img {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+  min-width: 0;
 }
 
 .table {
@@ -379,21 +541,45 @@ img {
   display: grid;
   place-items: center;
   z-index: 50;
-  padding: 1.25rem;
+  padding: var(--gutter);
+  /* Modal.tsx mounts and unmounts rather than toggling a class, so the
+     entrance is an animation, not a transition. */
+  animation: overlay-in var(--dur-panel) var(--ease-out);
 }
 
 .modal {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--radius-card);
   padding: 2rem;
   width: min(560px, 100%);
   max-height: 90vh;
   max-height: 90dvh; /* dvh excludes iOS's dynamic toolbar */
   overflow-y: auto;
-  box-shadow: 0 30px 80px rgba(22, 36, 28, 0.25);
+  box-shadow: var(--shadow-modal);
   display: grid;
   gap: 1.25rem;
+  animation: modal-in var(--dur-panel) var(--ease-out);
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* ---------------------------------------------------------- status badges */
@@ -427,6 +613,16 @@ img {
   color: #9c4a3c;
   border-color: rgba(156, 74, 60, 0.4);
   background: rgba(156, 74, 60, 0.08);
+}
+
+/* Solid, where the three status badges above are outlined. Differentiating by
+   weight rather than hue keeps a sale from being mistaken for a stock warning
+   at a glance — and leaves terracotta meaning "sold out" only. */
+.badge--sale {
+  color: var(--cream);
+  background: var(--green-700);
+  border-color: var(--green-700);
+  letter-spacing: 0.06em;
 }
 
 /* -------------------------------------------------------------- thumbnails */
@@ -591,7 +787,7 @@ img {
   height: 1px;
   background: var(--green-700);
   transform: scaleX(0);
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.25s var(--ease-out);
 }
 
 .shop-nav__link:hover::after,
@@ -602,7 +798,7 @@ img {
 }
 
 .shop-nav__caret {
-  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.25s var(--ease-out);
 }
 
 .shop-nav__link[aria-expanded='true'] .shop-nav__caret {
@@ -622,8 +818,8 @@ img {
   transform: translateY(-8px);
   pointer-events: none;
   transition:
-    opacity 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0var(--dur) var(--ease-out),
+    transform 0var(--dur) var(--ease-out);
 }
 
 .panel--open {
@@ -687,7 +883,7 @@ img {
 }
 
 .cart-badge--pop {
-  animation: badge-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: badge-pop 0.4s var(--ease-out);
 }
 
 @keyframes badge-pop {
@@ -719,7 +915,9 @@ img {
   display: grid;
   gap: 0.7rem;
   align-content: start;
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  /* A card must never be the reason the grid refuses to narrow. */
+  min-width: 0;
+  transition: transform var(--dur-panel) var(--ease-out);
 }
 
 .product-card:hover {
@@ -727,11 +925,17 @@ img {
 }
 
 .product-card .frame {
-  border-radius: 20px;
+  border-radius: var(--radius-frame);
+  /* Lifts the card off the page on hover rather than just sliding it. */
+  transition: box-shadow var(--dur-panel) var(--ease-out);
+}
+
+.product-card:hover .frame {
+  box-shadow: var(--shadow-lift);
 }
 
 .product-card .frame img {
-  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
 .product-card:hover .frame img {
@@ -757,30 +961,566 @@ img {
   color: var(--green-700);
 }
 
-/* Quick-add slides up over the image on hover; always visible on touch. */
-.product-card__add {
-  position: absolute;
-  left: 0.6rem;
-  right: 0.6rem;
-  bottom: 0.6rem;
-  opacity: 0;
-  transform: translateY(8px);
-  transition:
-    opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+/* Reminder on the inventory page that a store-wide discount is running; it is
+   configured on the profile page. */
+.store-discount-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-pill);
+  background: var(--green-700);
+  color: var(--cream);
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
-.product-card:hover .product-card__add,
-.product-card:focus-within .product-card__add {
+.store-discount-strip a {
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+/* Vendor modal: the final price a discount produces, shown while typing. */
+.discount-preview {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.6rem 0.8rem;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  font-size: 1rem;
+  color: var(--green-700);
+  font-family: var(--font-display), 'Tenor Sans', sans-serif;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.discount-preview__off {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gold);
+}
+
+/* Price/availability changes found by the cart reconcile. */
+.cart-notice {
+  display: grid;
+  gap: 0.6rem;
+  border-color: var(--green-700);
+  background: rgba(44, 74, 56, 0.05);
+}
+
+/* ---- price with an optional struck-through original ---- */
+
+.price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.price__was {
+  color: var(--muted);
+  font-size: 0.82em;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+/* Deliberately not red: the brand's price colour is green everywhere, and the
+   strikethrough plus the solid badge already signal the markdown. */
+.price__now {
+  font-family: var(--font-display), 'Tenor Sans', sans-serif;
+  color: var(--green-700);
+}
+
+.price--sm {
+  font-size: 0.9rem;
+}
+
+.price--lg .price__now {
+  font-size: 1.9rem;
+}
+
+/* Sale flag and stock badge share the card's top-left corner. Stacking them in
+   one container beats a second absolute position, and the max-width keeps them
+   clear of the action buttons on the right. */
+/* The markdown leads, top-left. max-width clears the action buttons opposite. */
+.product-card__sale {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  max-width: calc(100% - 4.4rem);
+}
+
+/* Availability is a footnote, so it sits in the far corner from the price
+   rather than under the discount. Nothing else occupies the bottom edge. */
+.product-card__stock {
+  position: absolute;
+  bottom: 0.6rem;
+  left: 0.6rem;
+  max-width: calc(100% - 1.2rem);
+  /* The status modifiers are translucent; over a photo they need an opaque
+     base to stay legible. */
+  background: var(--surface);
+}
+
+/* Corner actions — favorite and quick-add. Revealed on hover for a mouse and
+   permanently visible on touch, where there is no hover to reveal them. */
+.product-card__actions {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: grid;
+  gap: 0.4rem;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+
+.product-card:hover .product-card__actions,
+.product-card:focus-within .product-card__actions {
   opacity: 1;
   transform: translateY(0);
 }
 
+.product-card__action {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 6px 16px rgba(22, 36, 28, 0.12);
+  transition:
+    background var(--dur-fast) ease,
+    color var(--dur-fast) ease,
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.product-card__action:hover {
+  transform: scale(1.06);
+}
+
+.product-card__action:active {
+  transform: scale(0.94);
+}
+
+.product-card__action--add:hover {
+  background: var(--green-700);
+  border-color: var(--green-700);
+  color: var(--cream);
+}
+
+/* Saved and just-added both read as "on" — filled, in brand green. */
+.product-card__action--on,
+.product-card__action--done {
+  background: var(--green-700);
+  border-color: var(--green-700);
+  color: var(--cream);
+}
+
 @media (hover: none) {
-  .product-card__add {
+  .product-card__actions {
     opacity: 1;
     transform: none;
   }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- promotion carousel ---- */
+
+.promo-wrap {
+  padding-block: 2rem;
+}
+
+.promo-wrap--hero {
+  padding-top: 1.75rem;
+  padding-bottom: 2.5rem;
+}
+
+.promo {
+  position: relative;
+  /* All slides share one grid cell rather than being absolutely positioned, so
+     the card grows to fit the tallest slide. With `position: absolute` the
+     height came only from min-height, and at narrow widths — where the
+     headline and body wrap onto more lines — the content overflowed and the
+     dots landed on top of the CTA. */
+  display: grid;
+  grid-template-areas: 'slide';
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  min-height: 320px;
+}
+
+.promo-wrap--hero .promo {
+  min-height: clamp(360px, 46vw, 480px);
+}
+
+/* Every slide stays mounted and cross-fades with a small drift. Only opacity
+   and transform animate, so the whole thing stays on the compositor. */
+.promo__slide {
+  grid-area: slide;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: stretch;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out);
+}
+
+/* Which way an inactive slide sits decides which way it drifts, so advancing
+   reads as forward motion rather than an untethered fade. */
+.promo__slide--left {
+  transform: translateX(-2.5rem);
+}
+
+.promo__slide--right {
+  transform: translateX(2.5rem);
+}
+
+.promo__slide--active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.promo__media {
+  position: relative;
+  overflow: hidden;
+  background: #ebe7db;
+}
+
+/* Absolutely positioned so the photo never contributes to the row height. The
+   card's height comes from the copy; a tall portrait image would otherwise
+   stretch the whole carousel to its natural aspect ratio. */
+.promo__media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* A slow drift while the slide is showing; it settles as the next takes over. */
+  transform: scale(1.04);
+  transition: transform 7s linear;
+}
+
+.promo__slide--active .promo__media img {
+  transform: scale(1);
+}
+
+.promo__body {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 0.85rem;
+  /* Bottom padding reserves the dots' lane so they never sit on the CTA. */
+  padding: 2.5rem 2.5rem 3.25rem;
+  min-width: 0;
+}
+
+.promo__headline {
+  font-size: clamp(1.6rem, 3.2vw, 2.3rem);
+}
+
+.promo-wrap--hero .promo__headline {
+  font-size: clamp(2rem, 4.2vw, 3rem);
+}
+
+.promo__copy {
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 0.95rem;
+  max-width: 34rem;
+}
+
+.promo__dots {
+  position: absolute;
+  left: 2.5rem;
+  bottom: 1.4rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.promo__dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--sage);
+  background: transparent;
+  transition:
+    background var(--dur-fast) ease,
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.promo__dot--active {
+  background: var(--green-700);
+  border-color: var(--green-700);
+  transform: scale(1.2);
+}
+
+/* ---- search overlay ---- */
+
+/* A full-width sheet that drops from under the header. Fixed, portalled to the
+   body, and the only search surface in the app. */
+.search-overlay {
+  position: fixed;
+  /* `top` is set inline from the measured header height so the sheet docks
+     under the header instead of covering it. */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 39; /* under .shop-header (40), so the header stays interactive */
+  visibility: hidden;
+  /* Delayed so the sheet finishes sliding up before it leaves the tab order. */
+  transition: visibility 0s linear var(--dur-panel);
+}
+
+.search-overlay--open {
+  visibility: visible;
+  transition: visibility 0s;
+}
+
+.search-overlay__scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: rgba(22, 36, 28, 0.38);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity var(--dur-panel) var(--ease-out);
+  cursor: default;
+}
+
+.search-overlay--open .search-overlay__scrim {
+  opacity: 1;
+}
+
+.search-overlay__sheet {
+  position: relative;
+  background: rgba(255, 253, 249, 0.94);
+  backdrop-filter: blur(18px) saturate(1.4);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--shadow-panel);
+  padding-block: 1.5rem 1.75rem;
+  max-height: 80vh;
+  max-height: 80dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transform: translateY(-100%);
+  opacity: 0;
+  transition:
+    transform var(--dur-panel) var(--ease-out),
+    opacity var(--dur-fast) var(--ease-out);
+}
+
+.search-overlay--open .search-overlay__sheet {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.search-overlay__field {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--sage);
+}
+
+/* Not `.input`: this is a bare field on a surface, not a boxed control. */
+.search-overlay__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  /* 16px minimum, or iOS Safari zooms the page on focus. */
+  font-size: clamp(1rem, 2.4vw, 1.35rem);
+  font-family: var(--font-display), 'Tenor Sans', sans-serif;
+  padding: 0.25rem 0;
+}
+
+.search-overlay__input:focus {
+  outline: none;
+}
+
+.search-overlay__input::placeholder {
+  color: var(--sage);
+}
+
+.search-overlay__results {
+  padding-top: 1rem;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.search-overlay__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
+  gap: 0.15rem 1rem;
+}
+
+.search-overlay__hint,
+.search-overlay__empty {
+  padding: 0.75rem 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.search-overlay__all {
+  justify-self: start;
+  margin-top: 0.85rem;
+  padding: 0.6rem 0;
+  border: 0;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--green-700);
+}
+
+.search-overlay__all:hover {
+  text-decoration: underline;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  text-align: left;
+  transition:
+    background var(--dur-fast) ease,
+    transform var(--dur-fast) var(--ease-out);
+}
+
+.search-row--active {
+  background: var(--cream);
+  transform: translateX(3px);
+}
+
+.search-row__thumb {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ebe7db;
+}
+
+.search-row__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.search-row__text {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.search-row__name {
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-row__meta {
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sage);
+}
+
+.search-row__price {
+  font-family: var(--font-display), 'Tenor Sans', sans-serif;
+  color: var(--green-700);
+  flex-shrink: 0;
+}
+
+/* Two prices don't fit side by side in a search row — stack them. */
+.search-row__price .price {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  line-height: 1.2;
+}
+
+.search-row__price .price__was {
+  font-size: 0.72rem;
+}
+
+/* The wordmark. Sized through --logo-size so callers can scale it while the
+   stylesheet keeps the right to shrink it on narrow screens. */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.logo__word {
+  font-size: var(--logo-size, 1.05rem);
+  letter-spacing: 0.32em;
+  transform: translateY(1px);
+  white-space: nowrap;
+}
+
+/* Search entry point inside the mobile nav drawer; hands off to the overlay. */
+.drawer-search {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 48px;
+  margin-bottom: 1rem;
+  padding: 0 0.9rem;
+  border: 1px solid rgba(243, 239, 230, 0.25);
+  border-radius: var(--radius-pill);
+  background: rgba(243, 239, 230, 0.08);
+  color: rgba(243, 239, 230, 0.75);
+  font-size: 0.92rem;
+  text-align: left;
+}
+
+.drawer-search:active {
+  opacity: 0.6;
 }
 
 /* ---- pagination transition ---- */
@@ -794,7 +1534,7 @@ img {
 }
 
 .stagger-in {
-  animation: stagger-fade 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: stagger-fade 0.42s var(--ease-out) backwards;
   animation-delay: calc(var(--i, 0) * 45ms);
 }
 
@@ -862,7 +1602,7 @@ img {
 }
 
 .reveal {
-  animation: stagger-fade 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: stagger-fade 0.5s var(--ease-out) backwards;
 }
 
 /* ------------------------------------------------------------- drawers */
@@ -875,7 +1615,7 @@ img {
   backdrop-filter: blur(2px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity var(--dur-panel) var(--ease-out);
 }
 
 .drawer-backdrop--open {
@@ -897,8 +1637,8 @@ img {
      order; the delay lets it finish sliding out before it disappears. */
   visibility: hidden;
   transition:
-    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0s linear 0.32s;
+    transform var(--dur-drawer) var(--ease-out),
+    visibility 0s linear var(--dur-drawer);
   /* Keeps drawer scrolling from chaining to the page behind it on iOS. */
   overscroll-behavior: contain;
   padding-bottom: env(safe-area-inset-bottom);
@@ -920,7 +1660,7 @@ img {
   transform: translateX(0);
   visibility: visible;
   transition:
-    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    transform var(--dur-drawer) var(--ease-out),
     visibility 0s;
 }
 
@@ -929,7 +1669,7 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.35rem;
+  padding: 1rem var(--gutter);
   border-bottom: 1px solid var(--line);
   padding-top: calc(1rem + env(safe-area-inset-top));
 }
@@ -938,12 +1678,12 @@ img {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 1.35rem;
+  padding: var(--gutter);
 }
 
 .drawer__foot {
   border-top: 1px solid var(--line);
-  padding: 1rem 1.35rem;
+  padding: 1rem var(--gutter);
 }
 
 /* Full-width tappable rows inside drawers — 48px clears Apple's 44px floor. */
@@ -954,7 +1694,7 @@ img {
   gap: 0.75rem;
   width: 100%;
   min-height: 48px;
-  padding: 0.6rem 0;
+  padding-block: 0.6rem;
   border: none;
   background: none;
   font-family: inherit;
@@ -984,7 +1724,7 @@ img {
 .drawer-accordion {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: grid-template-rows var(--dur-panel) var(--ease-out);
 }
 
 .drawer-accordion--open {
@@ -1045,16 +1785,23 @@ img {
 
   .shop-header__bar {
     display: grid !important;
-    grid-template-columns: 1fr auto 1fr;
+    /* minmax(0, 1fr), never a bare 1fr: a bare fr track has a min-content
+       floor, so the three columns together refused to shrink below 377px and
+       any narrower viewport — an iPhone SE, or Safari's per-site page zoom —
+       pushed the search and cart icons off the right edge of the page. */
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
+    gap: 0.5rem !important;
   }
 
   .shop-header__logo {
     justify-self: center;
+    min-width: 0;
   }
 
   .shop-header__actions {
     justify-self: end;
+    min-width: 0;
   }
 
   .icon-button {
@@ -1063,7 +1810,7 @@ img {
   }
 
   .section {
-    padding: 3.25rem 0;
+    padding-block: 3.25rem;
   }
 
   .page-dot {
@@ -1110,7 +1857,7 @@ img {
     background: rgba(22, 36, 28, 0.4);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity var(--dur-panel) var(--ease-out);
   }
 
   .cart-scrim--open {
@@ -1145,15 +1892,15 @@ img {
     transform: translateX(100%);
     visibility: hidden;
     transition:
-      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-      visibility 0s linear 0.32s;
+      transform var(--dur-drawer) var(--ease-out),
+      visibility 0s linear var(--dur-drawer);
   }
 
   .cart-panel--open {
     transform: translateX(0);
     visibility: visible;
     transition:
-      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      transform var(--dur-drawer) var(--ease-out),
       visibility 0s;
   }
 
@@ -1164,21 +1911,93 @@ img {
 }
 
 @media (max-width: 560px) {
+  /* ---- phone type scale ----------------------------------------------------
+     Everything above is sized for a 1140px column. Rendered unchanged on a
+     390px screen those sizes leave almost no information per screenful, which
+     reads as the whole site being zoomed in. These are the same styles at a
+     phone's scale, not a different design. */
+
+  h2 {
+    font-size: 1.4rem;
+    line-height: 1.22;
+  }
+
+  h3 {
+    font-size: 1.05rem;
+  }
+
+  .lead {
+    font-size: 0.98rem;
+    line-height: 1.62;
+  }
+
+  .eyebrow {
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+  }
+
+  .btn {
+    padding: 0.72rem 1.3rem;
+    font-size: 0.88rem;
+  }
+
   .section {
-    padding: 2.75rem 0;
+    padding-block: 2.25rem;
   }
 
   .card {
-    padding: 1.5rem;
+    padding: 1.35rem;
   }
 
   .modal {
-    padding: 1.5rem;
+    padding: 1.35rem;
   }
 
   .announce {
-    padding: 0.4rem 0.9rem;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.7rem;
     letter-spacing: 0.03em;
+  }
+
+  .shop-header__bar {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Tracking is what makes the wordmark wide; trimming it buys ~30px. */
+  .logo__word {
+    letter-spacing: 0.2em;
+  }
+
+  .logo {
+    gap: 0.45rem;
+  }
+
+  /* A full-width 4:5 frame is 428px tall on a 390px screen — two thirds of the
+     viewport — so a product's name, price and Add to cart all land below the
+     fold. Capping the hero photo keeps the buy controls in view. Product cards
+     keep 4:5, which suits a plant in a 2-up grid. */
+  .product-hero {
+    aspect-ratio: 4 / 5;
+    max-height: 52vh;
+  }
+
+  .detail-stack {
+    gap: 2rem;
+  }
+
+  /* Three stacked full-width selects push the first product ~450px down. */
+  .filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem !important;
+  }
+
+  .filter-grid > :last-child {
+    grid-column: 1 / -1;
+  }
+
+  .field {
+    font-size: 0.66rem;
   }
 
   /* Two plants per row keeps browsing feeling like a shop, not a scroll.
@@ -1188,10 +2007,110 @@ img {
     gap: 1.75rem 1rem !important;
   }
 
-  /* Quick-add is hover-revealed on desktop; on a phone it just crowds the
-     card, and the whole card already links to the product. */
-  .product-card__add {
-    display: none;
+  /* A 2-up card is only ~163px wide, so a 40px circle takes a quarter of it.
+     The painted control shrinks to 36px while a transparent ::before keeps the
+     touch target at 42px — comfortably past the 24px WCAG minimum and near
+     Apple's 44pt guidance, without the buttons visually owning the card.
+     The 0.4rem gap gives a 42.4px pitch, so the two targets never overlap. */
+  .product-card__action {
+    width: 36px;
+    height: 36px;
+  }
+
+  .product-card__action::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: inherit;
+  }
+
+  .product-card__actions {
+    top: 0.5rem;
+    right: 0.5rem;
+    gap: 0.4rem;
+  }
+
+  .product-card__action svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  /* Two columns can't hold a headline and an image on a phone. The image
+     becomes the backdrop and the copy sits over it behind a scrim. */
+  .promo__slide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .promo__media {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* 360px is over half a phone viewport before anything else renders. Shorter
+     lets the carousel lead the page without owning the whole first screen. */
+  .promo-wrap {
+    padding-block: 1.25rem;
+  }
+
+  .promo-wrap--hero {
+    padding-top: 1rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .promo,
+  .promo-wrap--hero .promo {
+    min-height: 275px;
+  }
+
+  .promo-wrap--hero .promo__headline {
+    font-size: 1.5rem;
+  }
+
+  .promo__copy {
+    font-size: 0.9rem;
+  }
+
+  .promo__body {
+    position: relative;
+    z-index: 1;
+    padding: 1.5rem 1.35rem 2.5rem;
+    align-content: end;
+    color: var(--cream);
+    background: linear-gradient(
+      to top,
+      rgba(16, 36, 28, 0.92) 0%,
+      rgba(16, 36, 28, 0.72) 45%,
+      rgba(16, 36, 28, 0.15) 100%
+    );
+  }
+
+  .promo__copy {
+    color: rgba(243, 239, 230, 0.85);
+  }
+
+  /* The sage eyebrow loses contrast against the scrim. */
+  .promo__body .eyebrow--sage {
+    color: #cbd8cd;
+  }
+
+  .promo__body .btn {
+    background: var(--cream);
+    border-color: var(--cream);
+    color: var(--green-900);
+  }
+
+  .promo__dots {
+    left: 1.5rem;
+    bottom: 1.1rem;
+  }
+
+  .promo__dot {
+    border-color: rgba(243, 239, 230, 0.7);
+  }
+
+  .promo__dot--active {
+    background: var(--cream);
+    border-color: var(--cream);
   }
 
   /* Filter chips scroll sideways instead of stacking into a tall block. */
@@ -1224,12 +2143,22 @@ img {
     transition-duration: 0.001ms !important;
   }
 
-  .panel {
+  /* The rules above kill duration, but an element whose resting state is
+     offset would still jump into place. These reset the offset itself. */
+  .panel,
+  .product-card__actions,
+  .explore-card__arrow {
     transform: none;
   }
 
   .drawer {
     transition: none;
+  }
+
+  /* Not covered by the duration reset above — scroll-behavior is its own
+     property, and JS-driven smooth scrolling needs useReducedMotion(). */
+  html {
+    scroll-behavior: auto;
   }
 }
 
@@ -1242,7 +2171,7 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 1.5rem;
+  padding: 0.5rem var(--gutter);
   padding-top: calc(0.5rem + env(safe-area-inset-top));
   background: var(--green-900);
   color: var(--cream);
@@ -1273,5 +2202,54 @@ img {
   /* The drawer panel itself carries the sidebar's dark surface. */
   .drawer:has(.sidebar--drawer) {
     background: var(--green-900);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Genuinely small screens: iPhone SE is 320px, and Safari's per-site page zoom
+   makes any phone behave like a narrower one. Nothing here is a different
+   design — it is the same layout with the last fixed widths given room.
+
+   The cap is 360px on purpose. Current iPhones report 390–430px and must keep
+   the full 24px gutter; tightening it there would undo the cushion that took
+   several rounds to get right.
+--------------------------------------------------------------------------- */
+@media (max-width: 360px) {
+  :root {
+    --gutter: 1.15rem;
+  }
+
+  .logo__word {
+    font-size: 0.85rem;
+    letter-spacing: 0.14em;
+  }
+
+  .logo {
+    gap: 0.35rem;
+  }
+
+  /* 44px targets are the reason the action cluster cannot shrink; 40px still
+     clears the 24px WCAG minimum with room to spare. */
+  .icon-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .shop-header__actions {
+    gap: 0.15rem;
+  }
+
+  .announce {
+    font-size: 0.64rem;
+    letter-spacing: 0.01em;
+  }
+
+  .promo__body {
+    padding: 1.25rem 1.1rem 2.35rem;
+  }
+
+  /* One filter per row again — two 150px columns do not fit under 340px. */
+  .filter-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }

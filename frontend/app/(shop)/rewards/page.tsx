@@ -162,7 +162,7 @@ export default function RewardsPage() {
             <span className="eyebrow">{copy.eyebrow}</span>
             <span className="pill">{copy.badge}</span>
           </div>
-          <h1 style={{ fontSize: 'clamp(2.1rem, 4.5vw, 3rem)' }}>{copy.title}</h1>
+          <h1 className="page-title">{copy.title}</h1>
           <p className="lead" style={{ fontSize: '1.05rem' }}>
             {copy.lead}
           </p>
@@ -171,11 +171,11 @@ export default function RewardsPage() {
 
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="container" style={{ display: 'grid', gap: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.7rem' }}>{copy.howTitle}</h2>
+          <h2 className="section-title">{copy.howTitle}</h2>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
               gap: '1.25rem',
             }}
           >
@@ -196,11 +196,11 @@ export default function RewardsPage() {
 
       <section className="section" style={{ paddingTop: '1rem' }}>
         <div className="container" style={{ display: 'grid', gap: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.7rem' }}>{copy.tiersTitle}</h2>
+          <h2 className="section-title">{copy.tiersTitle}</h2>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
               gap: '1.25rem',
             }}
           >
@@ -216,7 +216,7 @@ export default function RewardsPage() {
                 }}
               >
                 <div style={{ display: 'grid', gap: '0.3rem' }}>
-                  <h3 className="display" style={{ fontSize: '1.5rem' }}>
+                  <h3 className="display section-title">
                     {tier.name}
                   </h3>
                   <span style={{ fontSize: '0.85rem', color: 'var(--sage)' }}>
@@ -245,7 +245,7 @@ export default function RewardsPage() {
 
       <section className="section" style={{ paddingTop: '1rem' }}>
         <div className="container" style={{ display: 'grid', gap: '1.25rem', maxWidth: '46rem' }}>
-          <h2 style={{ fontSize: '1.6rem' }}>{copy.faqTitle}</h2>
+          <h2 className="section-title">{copy.faqTitle}</h2>
           <div style={{ display: 'grid' }}>
             {copy.faqs.map((faq) => (
               <div
@@ -278,7 +278,7 @@ export default function RewardsPage() {
             maxWidth: '36rem',
           }}
         >
-          <h2 style={{ fontSize: '1.8rem' }}>{copy.ctaTitle}</h2>
+          <h2 className="section-title">{copy.ctaTitle}</h2>
           <p className="lead">{copy.ctaCopy}</p>
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             <Link href="/account" className="btn btn--cream">

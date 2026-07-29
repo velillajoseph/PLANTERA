@@ -11,8 +11,16 @@ from datetime import datetime, timedelta
 from sqlmodel import Session, SQLModel
 
 from .db import engine
-from .models import InventoryItem, Order, OrderItem, StoreProfile
-from .security import hash_vendor_password
+from .models import (
+    CustomerAccount,
+    FavoritePlant,
+    InventoryItem,
+    Order,
+    OrderItem,
+    Promotion,
+    StoreProfile,
+)
+from .security import hash_password
 
 DEMO_PASSWORD = "plantera-demo"
 
@@ -30,6 +38,62 @@ CUSTOMER_NAMES = [
 ]
 
 UNSPLASH = "https://images.unsplash.com/photo-{id}?w=900&q=80"
+UNSPLASH_WIDE = "https://images.unsplash.com/photo-{id}?w=1400&q=80"
+
+# Demo shoppers for the account dashboard. Pre-verified so login works straight
+# out of the seed — the real signup flow still requires the emailed code.
+DEMO_CUSTOMERS = [
+    {
+        "first_name": "Marisol",
+        "last_name": "Rivera",
+        "email": "marisol@plantera.pr",
+        "phone": "787-555-0142",
+        "favorites": 3,
+    },
+    {
+        "first_name": "Andrés",
+        "last_name": "Colón",
+        "email": "andres@plantera.pr",
+        "phone": "787-555-0177",
+        "favorites": 2,
+    },
+]
+
+# One promotion per vivero at different priorities, so the carousel's ranking is
+# visibly doing something rather than just listing rows. Photo ids reuse the
+# storefront's already visually-verified images.
+PROMOTIONS = [
+    {
+        "vendor_email": "verde-valle@plantera.pr",
+        "headline_es": "20% en toda la colección de interior",
+        "headline_en": "20% off the whole indoor collection",
+        "body_es": "Monstera, filodendro y potos criados en las montañas de Caguas.",
+        "body_en": "Monstera, philodendron and pothos raised in the Caguas hills.",
+        "cta_href": "/shop?vivero={store_id}",
+        "photo": "1545241047-6083a3684587",
+        "priority": 30,
+    },
+    {
+        "vendor_email": "jardines-boriken@plantera.pr",
+        "headline_es": "Nuevas llegadas desde Ponce",
+        "headline_en": "New arrivals from Ponce",
+        "body_es": "Suculentas y cactus del sur, listos para el sol de tu balcón.",
+        "body_en": "Southern succulents and cacti, ready for your balcony sun.",
+        "cta_href": "/shop?sort=new",
+        "photo": "1466692476868-aef1dfb1e735",
+        "priority": 20,
+    },
+    {
+        "vendor_email": "casa-tropical@plantera.pr",
+        "headline_es": "Macetas artesanales hechas en la isla",
+        "headline_en": "Handmade pots, made on the island",
+        "body_es": "Barro y cerámica de talleres locales, en tamaños para cada planta.",
+        "body_en": "Clay and ceramic from local workshops, sized for every plant.",
+        "cta_href": "/shop?category=pot",
+        "photo": "1470058869958-2a77ade41c02",
+        "priority": 10,
+    },
+]
 
 # Photo ids are Unsplash originals that were opened and visually confirmed to
 # show the product described — do not swap one in without looking at it first.
@@ -37,6 +101,9 @@ VENDORS = [
     {
         "name": "Vivero Verde Valle",
         "email": "verde-valle@plantera.pr",
+        # Backs the "20% en toda la colección de interior" promo banner below —
+        # without this the banner advertises a discount that never applies.
+        "store_discount_percent": 20,
         "address": "Caguas, PR",
         "bio": "Vivero familiar especializado en plantas tropicales y de interior.",
         "inventory": [
@@ -98,6 +165,8 @@ VENDORS = [
             },
             {
                 "name": "Sansevieria",
+                # Item-level beats store-level; this one proves it in the demo.
+                "discount_percent": 30,
                 "price": 26.0,
                 "stock": 20,
                 "photo": "1593482892290-f54927ae1bb6",
@@ -197,13 +266,17 @@ def seed() -> None:
     SQLModel.metadata.create_all(engine)
 
     with Session(engine) as session:
+        stores_by_email: dict[str, StoreProfile] = {}
+        all_items: list[InventoryItem] = []
+
         for vendor_data in VENDORS:
             store = StoreProfile(
                 name=vendor_data["name"],
                 email=vendor_data["email"],
                 address=vendor_data["address"],
                 bio=vendor_data["bio"],
-                password_hash=hash_vendor_password(DEMO_PASSWORD),
+                password_hash=hash_password(DEMO_PASSWORD),
+                store_discount_percent=vendor_data.get("store_discount_percent", 0),
             )
             session.add(store)
             session.commit()
@@ -223,12 +296,16 @@ def seed() -> None:
                     genus=entry.get("genus"),
                     category=category,
                     is_featured=category == "plant",
+                    discount_percent=entry.get("discount_percent", 0),
                 )
                 session.add(item)
                 items.append(item)
             session.commit()
             for item in items:
                 session.refresh(item)
+
+            stores_by_email[store.email] = store
+            all_items.extend(items)
 
             # Six months of demo orders, growing gently month over month.
             now = datetime.utcnow()
@@ -273,7 +350,51 @@ def seed() -> None:
 
             print(f"  vendor: {store.email}  password: {DEMO_PASSWORD}")
 
-    print("\nSeed complete. Log in at /vendor/login with any vendor above.")
+        # Demo shoppers, each with a few plants already saved so the account
+        # dashboard has something to show.
+        plants = [item for item in all_items if item.category == "plant"]
+        for index, person in enumerate(DEMO_CUSTOMERS):
+            customer = CustomerAccount(
+                first_name=person["first_name"],
+                last_name=person["last_name"],
+                email=person["email"],
+                phone=person["phone"],
+                password_hash=hash_password(DEMO_PASSWORD),
+                is_verified=True,
+            )
+            session.add(customer)
+            session.commit()
+            session.refresh(customer)
+
+            # Offset the slice per customer so the two dashboards don't look
+            # identical side by side in a demo.
+            start = index * 2
+            for item in plants[start : start + person["favorites"]]:
+                session.add(FavoritePlant(customer_id=customer.id, inventory_item_id=item.id))
+            session.commit()
+            print(f"  customer: {customer.email}  password: {DEMO_PASSWORD}")
+
+        now = datetime.utcnow()
+        for promo_data in PROMOTIONS:
+            store = stores_by_email[promo_data["vendor_email"]]
+            session.add(
+                Promotion(
+                    store_id=store.id,
+                    headline_es=promo_data["headline_es"],
+                    headline_en=promo_data["headline_en"],
+                    body_es=promo_data["body_es"],
+                    body_en=promo_data["body_en"],
+                    cta_href=promo_data["cta_href"].format(store_id=store.id),
+                    image_url=UNSPLASH_WIDE.format(id=promo_data["photo"]),
+                    starts_at=now - timedelta(days=1),
+                    ends_at=now + timedelta(days=60),
+                    priority=promo_data["priority"],
+                )
+            )
+        session.commit()
+        print(f"  promotions: {len(PROMOTIONS)} running")
+
+    print("\nSeed complete. Vendors log in at /acceso/login; customers at /account.")
 
 
 if __name__ == "__main__":

@@ -7,12 +7,21 @@ import {
   useMemo,
   useState,
 } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Modal from '../../../components/Modal';
 import ImageUploader from '../../../components/ImageUploader';
 import { formatMoney } from '../../../lib/format';
 import { useLang } from '../../../lib/i18n';
 import { resolveImageUrl } from '../../../lib/catalog';
+import { useVendor } from '../../../lib/vendor-context';
+import {
+  MAX_DISCOUNT_PERCENT,
+  applyPercent,
+  fromUtcNaive,
+  toUtcNaive,
+  windowLive,
+} from '../../../lib/pricing';
 import {
   ApiError,
   clearToken,
@@ -34,11 +43,11 @@ type SortKey = 'name' | 'price' | 'stock';
 const COPY = {
   es: {
     title: 'Inventario',
-    subtitle: 'Administra tus plantas: precios, disponibilidad, fotos y destacados.',
+    subtitle: 'Administra tu catálogo: precios, descuentos, disponibilidad y fotos.',
     loading: 'Cargando inventario…',
     errLoad: 'No pudimos cargar tu inventario. ¿Está corriendo el backend?',
     retry: 'Reintentar',
-    addPlant: '+ Agregar planta',
+    addPlant: '+ Agregar producto',
     search: 'Buscar por nombre…',
     filterLabel: 'Estado',
     filters: {
@@ -53,7 +62,7 @@ const COPY = {
       SortKey,
       string
     >,
-    thPlant: 'Planta',
+    thPlant: 'Producto',
     thPrice: 'Precio',
     thStock: 'Inventario',
     thStatus: 'Estado',
@@ -63,8 +72,8 @@ const COPY = {
     featuredNo: '—',
     edit: 'Editar',
     remove: 'Eliminar',
-    emptyFiltered: 'Ninguna planta coincide con tu búsqueda.',
-    emptyInventory: 'No hay plantas en tu inventario. Agrega la primera.',
+    emptyFiltered: 'Ningún producto coincide con tu búsqueda.',
+    emptyInventory: 'No hay productos en tu inventario. Agrega el primero.',
     showing: (from: number, to: number, total: number) =>
       `Mostrando ${from}–${to} de ${total}`,
     pageOf: (page: number, count: number) => `Página ${page} de ${count}`,
@@ -76,11 +85,22 @@ const COPY = {
     badgePaused: 'Pausada',
     pause: 'Pausar',
     activate: 'Activar',
-    pausedNote: 'Esta planta no aparece en la tienda.',
-    errPhoto: 'Añade una foto de la planta.',
-    errUpload: 'La planta se guardó, pero la foto no se pudo subir.',
-    modalAdd: 'Agregar planta',
-    modalEdit: 'Editar planta',
+    pausedNote: 'Este producto no aparece en la tienda.',
+    errPhoto: 'Añade una foto del producto.',
+    errUpload: 'El producto se guardó, pero la foto no se pudo subir.',
+    errDiscount: 'El descuento debe ser un número entero entre 0 y 90.',
+    errDiscountRange: 'La fecha de fin debe ser posterior a la de inicio.',
+    fieldDiscount: 'Descuento (%)',
+    fieldDiscountStart: 'Empieza',
+    fieldDiscountEnd: 'Termina',
+    finalPrice: 'Precio final',
+    discountHint:
+      'Déjalo en blanco para que el descuento corra hasta que lo apagues.',
+    storeDiscountActive: (percent: number) =>
+      `Descuento de tienda activo: −${percent}% en todo tu catálogo`,
+    storeDiscountEdit: 'Editar',
+    modalAdd: 'Agregar producto',
+    modalEdit: 'Editar producto',
     close: 'Cerrar',
     fieldName: 'Nombre',
     fieldPrice: 'Precio',
@@ -92,8 +112,8 @@ const COPY = {
     genusHint: 'Ej. Monstera, Ficus. Agrupa la planta en la tienda y su guía de cuidado.',
     fieldCategory: 'Categoría',
     categories: { plant: 'Planta', pot: 'Maceta', supply: 'Accesorio' } as Record<string, string>,
-    fieldFeatured: 'Planta destacada',
-    featuredHint: 'Las plantas destacadas aparecerán primero en el catálogo de Plantera.',
+    fieldFeatured: 'Producto destacado',
+    featuredHint: 'Los productos destacados aparecerán primero en el catálogo de Plantera.',
     imagePreview: 'Vista previa',
     errName: 'El nombre no puede estar vacío.',
     errPrice: 'El precio debe ser mayor que cero.',
@@ -102,7 +122,7 @@ const COPY = {
     cancel: 'Cancelar',
     save: 'Guardar cambios',
     add: 'Agregar',
-    deleteTitle: 'Eliminar planta',
+    deleteTitle: 'Eliminar producto',
     deleteBody: (name: string) =>
       `¿Seguro que quieres eliminar ${name} de tu inventario? Esta acción no se puede deshacer.`,
     confirmDelete: 'Eliminar',
@@ -111,11 +131,11 @@ const COPY = {
   },
   en: {
     title: 'Inventory',
-    subtitle: 'Manage your plants: pricing, availability, photos, and featured picks.',
+    subtitle: 'Manage your catalog: pricing, discounts, availability, and photos.',
     loading: 'Loading inventory…',
     errLoad: 'We could not load your inventory. Is the backend running?',
     retry: 'Retry',
-    addPlant: '+ Add plant',
+    addPlant: '+ Add product',
     search: 'Search by name…',
     filterLabel: 'Status',
     filters: {
@@ -130,7 +150,7 @@ const COPY = {
       SortKey,
       string
     >,
-    thPlant: 'Plant',
+    thPlant: 'Product',
     thPrice: 'Price',
     thStock: 'Stock',
     thStatus: 'Status',
@@ -140,8 +160,8 @@ const COPY = {
     featuredNo: '—',
     edit: 'Edit',
     remove: 'Remove',
-    emptyFiltered: 'No plants match your search.',
-    emptyInventory: 'No plants in your inventory yet. Add the first one.',
+    emptyFiltered: 'No products match your search.',
+    emptyInventory: 'Nothing in your inventory yet. Add the first product.',
     showing: (from: number, to: number, total: number) =>
       `Showing ${from}–${to} of ${total}`,
     pageOf: (page: number, count: number) => `Page ${page} of ${count}`,
@@ -153,11 +173,21 @@ const COPY = {
     badgePaused: 'Paused',
     pause: 'Pause',
     activate: 'Activate',
-    pausedNote: 'This plant does not appear in the shop.',
-    errPhoto: 'Add a photo of the plant.',
-    errUpload: 'The plant was saved, but the photo could not be uploaded.',
-    modalAdd: 'Add plant',
-    modalEdit: 'Edit plant',
+    pausedNote: 'This product does not appear in the shop.',
+    errPhoto: 'Add a photo of the product.',
+    errUpload: 'The product was saved, but the photo could not be uploaded.',
+    errDiscount: 'The discount must be a whole number between 0 and 90.',
+    errDiscountRange: 'The end date must be after the start date.',
+    fieldDiscount: 'Discount (%)',
+    fieldDiscountStart: 'Starts',
+    fieldDiscountEnd: 'Ends',
+    finalPrice: 'Final price',
+    discountHint: 'Leave blank to run the discount until you switch it off.',
+    storeDiscountActive: (percent: number) =>
+      `Store-wide discount active: −${percent}% across your catalog`,
+    storeDiscountEdit: 'Edit',
+    modalAdd: 'Add product',
+    modalEdit: 'Edit product',
     close: 'Close',
     fieldName: 'Name',
     fieldPrice: 'Price',
@@ -169,8 +199,8 @@ const COPY = {
     genusHint: 'e.g. Monstera, Ficus. Groups the plant in the shop and its care guide.',
     fieldCategory: 'Category',
     categories: { plant: 'Plant', pot: 'Pot', supply: 'Supply' } as Record<string, string>,
-    fieldFeatured: 'Featured plant',
-    featuredHint: 'Featured plants will appear first in the Plantera catalog.',
+    fieldFeatured: 'Featured product',
+    featuredHint: 'Featured products will appear first in the Plantera catalog.',
     imagePreview: 'Preview',
     errName: 'The name cannot be empty.',
     errPrice: 'The price must be greater than zero.',
@@ -179,7 +209,7 @@ const COPY = {
     cancel: 'Cancel',
     save: 'Save changes',
     add: 'Add',
-    deleteTitle: 'Remove plant',
+    deleteTitle: 'Remove product',
     deleteBody: (name: string) =>
       `Are you sure you want to remove ${name} from your inventory? This cannot be undone.`,
     confirmDelete: 'Remove',
@@ -201,6 +231,9 @@ type Draft = {
   genus: string;
   category: string;
   featured: boolean;
+  discountPercent: string;
+  discountStartsAt: string;
+  discountEndsAt: string;
 };
 
 const EMPTY_DRAFT: Draft = {
@@ -216,6 +249,9 @@ const EMPTY_DRAFT: Draft = {
   genus: '',
   category: 'plant',
   featured: false,
+  discountPercent: '',
+  discountStartsAt: '',
+  discountEndsAt: '',
 };
 
 function itemStatus(item: InventoryItem): StatusFilter {
@@ -241,6 +277,7 @@ function Thumb({ item }: { item: InventoryItem }) {
 function InventoryContent() {
   const { lang } = useLang();
   const copy = COPY[lang];
+  const { profile } = useVendor();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -254,7 +291,15 @@ function InventoryContent() {
 
   const [draft, setDraft] = useState<Draft | null>(null);
   const [draftError, setDraftError] = useState<
-    'errName' | 'errPrice' | 'errStock' | 'errSave' | 'errPhoto' | 'errUpload' | null
+    | 'errName'
+    | 'errPrice'
+    | 'errStock'
+    | 'errSave'
+    | 'errPhoto'
+    | 'errUpload'
+    | 'errDiscount'
+    | 'errDiscountRange'
+    | null
   >(null);
   const [saving, setSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<InventoryItem | null>(null);
@@ -302,6 +347,9 @@ function InventoryContent() {
       genus: item.genus ?? '',
       category: item.category ?? 'plant',
       featured: item.is_featured,
+      discountPercent: item.discount_percent ? String(item.discount_percent) : '',
+      discountStartsAt: fromUtcNaive(item.discount_starts_at),
+      discountEndsAt: fromUtcNaive(item.discount_ends_at),
     });
   }, []);
 
@@ -366,6 +414,32 @@ function InventoryContent() {
     }
   };
 
+  const storeDiscountLive =
+    profile.store_discount_percent > 0 &&
+    windowLive(profile.store_discount_starts_at, profile.store_discount_ends_at);
+
+  // The discount actually in force for a listing right now: its own if live,
+  // otherwise the store-wide one. Mirrors resolve_pricing on the server so the
+  // vivero's table agrees with the storefront.
+  const vendorDiscount = (item: InventoryItem): number => {
+    if (item.discount_percent && windowLive(item.discount_starts_at, item.discount_ends_at)) {
+      return item.discount_percent;
+    }
+    return storeDiscountLive ? profile.store_discount_percent : 0;
+  };
+
+  // The final price the shopper would see, or null when there is nothing
+  // meaningful to preview yet.
+  const previewPrice = (() => {
+    if (!draft) return null;
+    const percent = Number(draft.discountPercent);
+    const price = Number(draft.price);
+    if (!draft.discountPercent.trim() || !draft.price.trim()) return null;
+    if (Number.isNaN(percent) || Number.isNaN(price) || price <= 0) return null;
+    if (percent <= 0 || percent > MAX_DISCOUNT_PERCENT) return null;
+    return applyPercent(price, percent);
+  })();
+
   const saveDraft = async () => {
     if (!draft || saving) return;
     const name = draft.name.trim();
@@ -382,6 +456,27 @@ function InventoryContent() {
     }
     if (Number.isNaN(stock) || stock < 0 || !Number.isInteger(stock)) {
       setDraftError('errStock');
+      return;
+    }
+
+    const discountPercent = draft.discountPercent.trim()
+      ? Number(draft.discountPercent)
+      : 0;
+    if (
+      Number.isNaN(discountPercent) ||
+      !Number.isInteger(discountPercent) ||
+      discountPercent < 0 ||
+      discountPercent > MAX_DISCOUNT_PERCENT
+    ) {
+      setDraftError('errDiscount');
+      return;
+    }
+    if (
+      draft.discountStartsAt &&
+      draft.discountEndsAt &&
+      new Date(draft.discountEndsAt) <= new Date(draft.discountStartsAt)
+    ) {
+      setDraftError('errDiscountRange');
       return;
     }
     // A listing without a photo is not sellable, so require one up front.
@@ -402,6 +497,9 @@ function InventoryContent() {
       genus: draft.genus.trim() || null,
       category: draft.category,
       is_featured: draft.featured,
+      discount_percent: discountPercent,
+      discount_starts_at: toUtcNaive(draft.discountStartsAt),
+      discount_ends_at: toUtcNaive(draft.discountEndsAt),
     };
 
     setSaving(true);
@@ -478,7 +576,7 @@ function InventoryContent() {
         }}
       >
         <div style={{ display: 'grid', gap: '0.5rem' }}>
-          <h1 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.4rem)' }}>{copy.title}</h1>
+          <h1 className="page-title">{copy.title}</h1>
           <p className="lead" style={{ fontSize: '0.95rem' }}>
             {copy.subtitle}
           </p>
@@ -495,11 +593,21 @@ function InventoryContent() {
         </button>
       </div>
 
+      {/* A store-wide discount is configured on the profile page, so without
+          this strip a vivero could set one and never see it again from the
+          screen where they actually manage prices. */}
+      {storeDiscountLive && (
+        <div className="store-discount-strip">
+          <span>{copy.storeDiscountActive(profile.store_discount_percent)}</span>
+          <Link href="/acceso/profile">{copy.storeDiscountEdit} →</Link>
+        </div>
+      )}
+
       <div className="card" style={{ display: 'grid', gap: '1.25rem' }}>
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
             gap: '1rem',
             alignItems: 'end',
           }}
@@ -594,7 +702,18 @@ function InventoryContent() {
                       </span>
                     </span>
                   </td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{formatMoney(item.price)}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {vendorDiscount(item) ? (
+                      <span className="price price--sm">
+                        <s className="price__was">{formatMoney(item.price)}</s>
+                        <span className="price__now">
+                          {formatMoney(applyPercent(item.price, vendorDiscount(item)))}
+                        </span>
+                      </span>
+                    ) : (
+                      formatMoney(item.price)
+                    )}
+                  </td>
                   <td>{item.stock}</td>
                   <td>{statusBadge(item)}</td>
                   <td
@@ -678,7 +797,10 @@ function InventoryContent() {
                     {item.plant_name}
                   </span>
                   <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
-                    {formatMoney(item.price)} · {copy.thStock}: {item.stock}
+                    {vendorDiscount(item)
+                      ? `${formatMoney(applyPercent(item.price, vendorDiscount(item)))} · −${vendorDiscount(item)}%`
+                      : formatMoney(item.price)}{' '}
+                    · {copy.thStock}: {item.stock}
                   </span>
                   <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     {statusBadge(item)}
@@ -818,6 +940,76 @@ function InventoryContent() {
                 />
               </label>
             </div>
+
+            <div
+              className="stack-on-mobile"
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}
+            >
+              <label className="field">
+                {copy.fieldDiscount}
+                <input
+                  className="input"
+                  type="number"
+                  min="0"
+                  max={MAX_DISCOUNT_PERCENT}
+                  step="1"
+                  value={draft.discountPercent}
+                  onChange={(event) =>
+                    setDraft({ ...draft, discountPercent: event.target.value })
+                  }
+                  placeholder="0"
+                />
+              </label>
+              {/* Read-only preview using the same rounding the server applies,
+                  so what the vivero sees here is what the shopper is charged. */}
+              <div className="field" aria-live="polite">
+                {copy.finalPrice}
+                <span className="discount-preview">
+                  {previewPrice === null ? (
+                    <span style={{ color: 'var(--sage)' }}>—</span>
+                  ) : (
+                    <>
+                      <strong>{formatMoney(previewPrice)}</strong>
+                      <span className="discount-preview__off">
+                        −{draft.discountPercent}%
+                      </span>
+                    </>
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className="stack-on-mobile"
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}
+            >
+              <label className="field">
+                {copy.fieldDiscountStart}
+                <input
+                  className="input"
+                  type="datetime-local"
+                  value={draft.discountStartsAt}
+                  onChange={(event) =>
+                    setDraft({ ...draft, discountStartsAt: event.target.value })
+                  }
+                />
+              </label>
+              <label className="field">
+                {copy.fieldDiscountEnd}
+                <input
+                  className="input"
+                  type="datetime-local"
+                  value={draft.discountEndsAt}
+                  onChange={(event) =>
+                    setDraft({ ...draft, discountEndsAt: event.target.value })
+                  }
+                />
+              </label>
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '-0.5rem' }}>
+              {copy.discountHint}
+            </p>
+
             <ImageUploader
               currentUrl={draft.clearPhoto ? null : draft.image || null}
               disabled={saving}

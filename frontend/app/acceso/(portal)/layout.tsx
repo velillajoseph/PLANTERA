@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LeafMark } from '../../components/Logo';
 import Drawer from '../../components/Drawer';
+import IdleWarningModal from '../../components/IdleWarningModal';
 import LangToggle from '../../components/LangToggle';
 import { useLang } from '../../lib/i18n';
+import { useIdleLogout } from '../../lib/use-idle-logout';
 import { VendorContext } from '../../lib/vendor-context';
 import {
   ApiError,
@@ -14,8 +16,13 @@ import {
   getMe,
   getToken,
   vendorLogout,
+  VENDOR_TOKEN_KEY,
   type VendorProfile,
 } from '../../lib/api';
+
+// Vendors are looking at revenue and customer names, so their window is
+// tighter than a shopper browsing the catalog.
+const VENDOR_IDLE_MS = 20 * 60 * 1000;
 
 const COPY = {
   es: {
@@ -107,7 +114,7 @@ export default function VendorPortalLayout({
     }
   }, [handleAuthFailure]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await vendorLogout();
     } catch {
@@ -115,7 +122,18 @@ export default function VendorPortalLayout({
     }
     clearToken();
     router.replace('/acceso/login');
-  };
+  }, [router]);
+
+  const { warning, secondsLeft, staySignedIn } = useIdleLogout({
+    enabled: state === 'ready',
+    idleMs: VENDOR_IDLE_MS,
+    activityKey: 'plantera-vendor-activity',
+    tokenKey: VENDOR_TOKEN_KEY,
+    onIdle: () => void logout(),
+    // Any authenticated call slides the server's window, so `me` doubles as
+    // the keep-alive and there is no extra endpoint to maintain.
+    onExtend: getMe,
+  });
 
   if (state !== 'ready' || !profile) {
     return (
@@ -252,6 +270,13 @@ export default function VendorPortalLayout({
         <aside className="sidebar sidebar--rail">{navBody}</aside>
         <div className="portal__content">{children}</div>
       </div>
+
+      <IdleWarningModal
+        open={warning}
+        secondsLeft={secondsLeft}
+        onStay={staySignedIn}
+        onLogout={() => void logout()}
+      />
     </VendorContext.Provider>
   );
 }

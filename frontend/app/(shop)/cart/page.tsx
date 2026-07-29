@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
+import Price from '../../components/shop/Price';
 import { useCart } from '../../lib/cart';
 import { useLang } from '../../lib/i18n';
 import { formatMoney } from '../../lib/format';
@@ -9,8 +11,13 @@ import { resolveImageUrl } from '../../lib/catalog';
 const COPY = {
   es: {
     title: 'Tu carrito',
+    noticeTitle: 'Actualizamos tu carrito',
+    priceDrop: '¡Bajó de precio!',
+    removed: 'ya no está disponible y lo quitamos',
+    dismiss: 'Cerrar aviso',
+    savings: 'Ahorras',
     empty: 'Tu carrito está vacío.',
-    emptyCopy: 'Cuando encuentres una planta que te guste, la verás aquí.',
+    emptyCopy: 'Cuando encuentres algo que te guste, lo verás aquí.',
     emptyCta: 'Explorar la tienda',
     product: 'Producto',
     price: 'Precio',
@@ -32,8 +39,13 @@ const COPY = {
   },
   en: {
     title: 'Your cart',
+    noticeTitle: 'We updated your cart',
+    priceDrop: 'Price dropped!',
+    removed: 'is no longer available and was removed',
+    dismiss: 'Dismiss',
+    savings: 'You save',
     empty: 'Your cart is empty.',
-    emptyCopy: 'When you find a plant you love, it will show up here.',
+    emptyCopy: 'When you find something you love, it will show up here.',
     emptyCta: 'Explore the shop',
     product: 'Product',
     price: 'Price',
@@ -60,7 +72,25 @@ const WHATSAPP_NUMBER = '17875550123';
 export default function CartPage() {
   const { lang } = useLang();
   const copy = COPY[lang];
-  const { lines, subtotal, setQty, remove, clear } = useCart();
+  const {
+    lines,
+    subtotal,
+    savings,
+    setQty,
+    remove,
+    clear,
+    reconcile,
+    priceChanges,
+    removedNames,
+    dismissNotice,
+  } = useCart();
+
+  // The last screen before the WhatsApp handoff, so the numbers here must be
+  // current — re-price unconditionally rather than trusting the cached copy.
+  useEffect(() => {
+    void reconcile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount; reconcile is recreated whenever lines change
+  }, []);
 
   const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
     lang === 'es'
@@ -89,13 +119,44 @@ export default function CartPage() {
 
   return (
     <div className="container section" style={{ display: 'grid', gap: '2rem' }}>
-      <h1 style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>{copy.title}</h1>
+      <h1 className="page-title">{copy.title}</h1>
+
+      {(priceChanges.length > 0 || removedNames.length > 0) && (
+        <div className="card cart-notice" role="status">
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+            <strong style={{ fontSize: '0.95rem' }}>{copy.noticeTitle}</strong>
+            <button
+              type="button"
+              onClick={dismissNotice}
+              aria-label={copy.dismiss}
+              style={{ border: 0, background: 'none', color: 'var(--muted)', fontSize: '1.2rem', lineHeight: 1 }}
+            >
+              ×
+            </button>
+          </div>
+          <ul style={{ display: 'grid', gap: '0.3rem', margin: 0, paddingLeft: '1.1rem' }}>
+            {priceChanges.map((change) => (
+              <li key={change.id} style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
+                {change.name} · {formatMoney(change.from)} → {formatMoney(change.to)}
+                {change.to < change.from && (
+                  <strong style={{ color: 'var(--green-700)' }}> {copy.priceDrop}</strong>
+                )}
+              </li>
+            ))}
+            {removedNames.map((name) => (
+              <li key={name} style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
+                {name} · {copy.removed}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div
         className="cart-layout"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(320px, 2fr) minmax(260px, 1fr)',
+          gridTemplateColumns: 'minmax(min(320px, 100%), 2fr) minmax(min(260px, 100%), 1fr)',
           gap: '2rem',
           alignItems: 'start',
         }}
@@ -112,7 +173,7 @@ export default function CartPage() {
                 borderBottom: '1px solid var(--line)',
               }}
             >
-              <Link href={`/plant/${line.id}`} className="thumb" style={{ width: 84, height: 84 }}>
+              <Link href={`/product/${line.id}`} className="thumb" style={{ width: 84, height: 84 }}>
                 {line.image ? (
                   <img src={resolveImageUrl(line.image) ?? undefined} alt="" />
                 ) : (
@@ -121,15 +182,17 @@ export default function CartPage() {
               </Link>
 
               <div style={{ flex: 1, display: 'grid', gap: '0.35rem' }}>
-                <Link href={`/plant/${line.id}`} style={{ fontWeight: 600 }}>
+                <Link href={`/product/${line.id}`} style={{ fontWeight: 600 }}>
                   {line.name}
                 </Link>
                 <span style={{ fontSize: '0.8rem', color: 'var(--sage)' }}>
                   {copy.soldBy} {line.vivero}
                 </span>
-                <span style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>
-                  {formatMoney(line.price)}
-                </span>
+                <Price
+                  price={line.price}
+                  original={line.listPrice > line.price ? line.listPrice : null}
+                  size="sm"
+                />
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.3rem' }}>
                   <label className="field" style={{ width: 92 }}>
                     <span className="sr-only" style={{ position: 'absolute', left: -9999 }}>
@@ -184,6 +247,14 @@ export default function CartPage() {
             <span style={{ color: 'var(--muted)' }}>{copy.subtotal}</span>
             <span style={{ fontWeight: 600 }}>{formatMoney(subtotal)}</span>
           </div>
+          {savings > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--green-700)' }}>{copy.savings}</span>
+              <span style={{ fontWeight: 600, color: 'var(--green-700)' }}>
+                −{formatMoney(savings)}
+              </span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <span style={{ color: 'var(--muted)' }}>{copy.shipping}</span>
             <span style={{ fontSize: '0.88rem', color: 'var(--sage)' }}>

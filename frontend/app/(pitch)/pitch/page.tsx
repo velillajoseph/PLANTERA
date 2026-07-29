@@ -115,7 +115,7 @@ export default function HomePage() {
           className="container"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
             gap: '3rem',
             alignItems: 'center',
           }}
@@ -155,7 +155,7 @@ export default function HomePage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(230px, 100%), 1fr))',
               gap: '2rem 1.5rem',
             }}
           >
@@ -171,7 +171,7 @@ export default function HomePage() {
           className="container"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
             gap: '3rem',
             alignItems: 'center',
           }}

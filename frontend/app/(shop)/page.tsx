@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import PaginatedGrid from '../components/shop/PaginatedGrid';
+import PromoCarousel from '../components/shop/PromoCarousel';
 import { useLang } from '../lib/i18n';
 import {
   getCatalog,
@@ -167,38 +168,20 @@ export default function ShopHomePage() {
 
   return (
     <div>
-      <section className="section" style={{ paddingBottom: '2rem' }}>
-        <div
-          className="container"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-            gap: '3rem',
-            alignItems: 'center',
-          }}
-        >
-          <div className="reveal" style={{ display: 'grid', gap: '1.5rem' }}>
-            <span className="eyebrow">{copy.heroEyebrow}</span>
-            <h1 style={{ fontSize: 'clamp(2.3rem, 5vw, 3.4rem)' }}>
-              {copy.heroTitle}
-            </h1>
-            <p className="lead" style={{ maxWidth: '34rem' }}>
-              {copy.heroLead}
-            </p>
-            <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap' }}>
-              <Link href="/shop" className="btn">
-                {copy.heroCta}
-              </Link>
-              <Link href="/care" className="btn btn--ghost">
-                {copy.heroCtaAlt}
-              </Link>
-            </div>
-          </div>
-          <div className="frame frame--45" style={{ maxHeight: '560px' }}>
-            <img src={HERO_IMAGE} alt={copy.heroAlt} />
-          </div>
-        </div>
-      </section>
+      {/* The carousel is the page's opening statement, so it carries the h1.
+          The fallback keeps that true even with no promotion running — without
+          it the homepage would start on a row of category cards and no heading. */}
+      <PromoCarousel
+        variant="hero"
+        fallback={{
+          eyebrow: copy.heroEyebrow,
+          headline: copy.heroTitle,
+          body: copy.heroLead,
+          ctaLabel: copy.heroCta,
+          ctaHref: '/shop',
+          image: HERO_IMAGE,
+        }}
+      />
 
       <section className="section" style={{ paddingTop: '1rem', paddingBottom: '2rem' }}>
         <div className="container" style={{ display: 'grid', gap: '1.5rem' }}>
@@ -206,7 +189,7 @@ export default function ShopHomePage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))',
               gap: '1rem',
             }}
           >
@@ -214,13 +197,13 @@ export default function ShopHomePage() {
               <Link
                 key={category.title}
                 href={category.href}
-                className="card"
-                style={{ display: 'grid', gap: '0.4rem', alignContent: 'start' }}
+                className="card explore-card"
               >
-                <h3 style={{ fontSize: '1.15rem' }}>{category.title}</h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--muted)', lineHeight: 1.55 }}>
-                  {category.copy}
-                </p>
+                <h3 className="explore-card__title">{category.title}</h3>
+                <p className="explore-card__copy">{category.copy}</p>
+                <span className="explore-card__arrow" aria-hidden>
+                  →
+                </span>
               </Link>
             ))}
           </div>
@@ -240,7 +223,7 @@ export default function ShopHomePage() {
           >
             <div style={{ display: 'grid', gap: '0.6rem' }}>
               <span className="eyebrow">{copy.featuredEyebrow}</span>
-              <h2 style={{ fontSize: '2.1rem' }}>{copy.featuredTitle}</h2>
+              <h2 className="section-title">{copy.featuredTitle}</h2>
               <p className="lead" style={{ maxWidth: '38rem' }}>
                 {copy.featuredLead}
               </p>
@@ -283,14 +266,14 @@ export default function ShopHomePage() {
           className="container"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
             gap: '3rem',
             alignItems: 'center',
           }}
         >
           <div style={{ display: 'grid', gap: '1.5rem' }}>
             <span className="eyebrow">{copy.viverosEyebrow}</span>
-            <h2 style={{ fontSize: '2.2rem' }}>{copy.viverosTitle}</h2>
+            <h2 className="section-title">{copy.viverosTitle}</h2>
             <p className="lead">{copy.viverosLead}</p>
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               {viveros.map((vivero) => (
@@ -338,7 +321,7 @@ export default function ShopHomePage() {
           className="container"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
             gap: '3rem',
             alignItems: 'center',
           }}
@@ -361,11 +344,11 @@ export default function ShopHomePage() {
 
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="container" style={{ display: 'grid', gap: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.6rem' }}>{copy.valuesTitle}</h2>
+          <h2 className="section-title">{copy.valuesTitle}</h2>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
               gap: '1rem',
             }}
           >

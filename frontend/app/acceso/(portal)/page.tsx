@@ -225,7 +225,7 @@ export default function VendorDashboardPage() {
     <div className="container section" style={{ display: 'grid', gap: '2rem' }}>
       <div style={{ display: 'grid', gap: '0.75rem' }}>
         <span className="pill">{copy.pill}</span>
-        <h1 style={{ fontSize: 'clamp(2rem, 4vw, 2.7rem)' }}>
+        <h1 className="page-title">
           {copy.welcome} {profile.name}
         </h1>
         <p className="lead" style={{ fontSize: '0.95rem' }}>
@@ -236,7 +236,7 @@ export default function VendorDashboardPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))',
           gap: '1.25rem',
         }}
       >
@@ -329,7 +329,7 @@ export default function VendorDashboardPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(160px, 100%), 1fr))',
                 gap: '1rem',
               }}
             >

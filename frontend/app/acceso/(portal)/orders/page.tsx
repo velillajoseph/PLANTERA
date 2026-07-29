@@ -147,7 +147,7 @@ export default function OrdersPageView() {
         }}
       >
         <div style={{ display: 'grid', gap: '0.5rem' }}>
-          <h1 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.4rem)' }}>{copy.title}</h1>
+          <h1 className="page-title">{copy.title}</h1>
           <p className="lead" style={{ fontSize: '0.95rem' }}>
             {copy.subtitle}
           </p>

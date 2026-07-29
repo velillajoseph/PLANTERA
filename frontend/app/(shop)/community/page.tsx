@@ -117,7 +117,7 @@ export default function CommunityPage() {
       <section className="section" style={{ paddingBottom: '1.5rem' }}>
         <div className="container" style={{ display: 'grid', gap: '1.25rem', maxWidth: '46rem' }}>
           <span className="eyebrow">{copy.eyebrow}</span>
-          <h1 style={{ fontSize: 'clamp(2.1rem, 4.5vw, 3rem)' }}>{copy.title}</h1>
+          <h1 className="page-title">{copy.title}</h1>
           <p className="lead" style={{ fontSize: '1.05rem' }}>
             {copy.lead}
           </p>
@@ -151,7 +151,7 @@ export default function CommunityPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(280px, 100%), 1fr))',
               gap: '2rem 1.5rem',
             }}
           >
@@ -189,7 +189,7 @@ export default function CommunityPage() {
             maxWidth: '36rem',
           }}
         >
-          <h2 style={{ fontSize: '1.8rem' }}>{copy.newsletterTitle}</h2>
+          <h2 className="section-title">{copy.newsletterTitle}</h2>
           <p className="lead">{copy.newsletterCopy}</p>
           {sent ? (
             <p style={{ color: 'var(--sage)', fontWeight: 600 }} role="status">

@@ -1,11 +1,36 @@
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+import { ApiError, createTokenStore, request, upload } from './http';
 
-const TOKEN_KEY = 'plantera-vendor-token';
+export { ApiError };
+
+/**
+ * Vendor-side API client. The transport lives in `http.ts`; this module only
+ * owns the vendor token and the endpoint list.
+ */
+export const VENDOR_TOKEN_KEY = 'plantera-vendor-token';
+export const vendorTokenStore = createTokenStore(VENDOR_TOKEN_KEY);
+
+export function getToken(): string | null {
+  return vendorTokenStore.get();
+}
+
+export function setToken(token: string) {
+  vendorTokenStore.set(token);
+}
+
+export function clearToken() {
+  vendorTokenStore.clear();
+}
+
+function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return request<T>(vendorTokenStore, path, options);
+}
 
 export type VendorProfile = {
   id: number;
   name: string;
+  store_discount_percent: number;
+  store_discount_starts_at: string | null;
+  store_discount_ends_at: string | null;
   email: string;
   phone: string | null;
   bio: string | null;
@@ -21,7 +46,11 @@ export type InventoryItem = {
   store_id: number;
   plant_name: string;
   description: string | null;
+  /** The **list** price the vivero set — never the discounted one. */
   price: number;
+  discount_percent: number;
+  discount_starts_at: string | null;
+  discount_ends_at: string | null;
   stock: number;
   image_url: string | null;
   tags: string | null;
@@ -63,57 +92,6 @@ export type VendorStats = {
   recent_orders: RecentOrder[];
 };
 
-export function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return window.localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token: string) {
-  window.localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearToken() {
-  window.localStorage.removeItem(TOKEN_KEY);
-}
-
-export class ApiError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
-
-async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
-
-  if (response.status === 401) {
-    clearToken();
-    throw new ApiError(401, 'unauthorized');
-  }
-  if (!response.ok) {
-    let detail = 'request_failed';
-    try {
-      const body = await response.json();
-      detail = body.detail ?? detail;
-    } catch {
-      // keep generic detail
-    }
-    throw new ApiError(response.status, detail);
-  }
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
-}
-
 export function vendorLogin(email: string, password: string) {
   return apiFetch<{ token: string; vendor: VendorProfile }>(
     '/api/vendor/login',
@@ -135,6 +113,9 @@ export function getInventory() {
 
 export type InventoryPayload = {
   plant_name: string;
+  discount_percent?: number;
+  discount_starts_at?: string | null;
+  discount_ends_at?: string | null;
   description?: string | null;
   price: number;
   stock: number;
@@ -167,29 +148,12 @@ export function deleteInventoryItem(id: number) {
   return apiFetch<void>(`/api/vendor/inventory/${id}`, { method: 'DELETE' });
 }
 
-/** Multipart upload — the browser must set its own boundary, so no JSON header. */
-export async function uploadInventoryImage(id: number, file: File) {
-  const token = getToken();
-  const body = new FormData();
-  body.append('file', file);
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/vendor/inventory/${id}/image`,
-    {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body,
-    },
+export function uploadInventoryImage(id: number, file: File) {
+  return upload<InventoryItem>(
+    vendorTokenStore,
+    `/api/vendor/inventory/${id}/image`,
+    file,
   );
-
-  if (response.status === 401) {
-    clearToken();
-    throw new ApiError(401, 'unauthorized');
-  }
-  if (!response.ok) {
-    throw new ApiError(response.status, 'upload_failed');
-  }
-  return (await response.json()) as InventoryItem;
 }
 
 export function removeInventoryImage(id: number) {
@@ -247,6 +211,9 @@ export function changePassword(currentPassword: string, newPassword: string) {
 
 export function updateProfile(payload: {
   name?: string;
+  store_discount_percent?: number;
+  store_discount_starts_at?: string | null;
+  store_discount_ends_at?: string | null;
   phone?: string | null;
   bio?: string | null;
   address?: string | null;

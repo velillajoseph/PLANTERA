@@ -69,7 +69,7 @@ export default function PlantDetail({ plant }: { plant: Plant }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
           gap: '3rem',
           alignItems: 'start',
         }}
@@ -83,7 +83,7 @@ export default function PlantDetail({ plant }: { plant: Plant }) {
             <span className="eyebrow eyebrow--sage">
               {vendor?.name} · {vendor?.location}
             </span>
-            <h1 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)' }}>
+            <h1 className="page-title">
               {plant.name}
             </h1>
           </div>
@@ -114,12 +114,12 @@ export default function PlantDetail({ plant }: { plant: Plant }) {
       <div style={{ display: 'grid', gap: '1.5rem' }}>
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <span className="eyebrow">{copy.careEyebrow}</span>
-          <h2 style={{ fontSize: '1.9rem' }}>{copy.careTitle}</h2>
+          <h2 className="section-title">{copy.careTitle}</h2>
         </div>
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))',
             gap: '0 2.5rem',
           }}
         >

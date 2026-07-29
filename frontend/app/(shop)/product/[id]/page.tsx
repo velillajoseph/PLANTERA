@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import Price from '../../../components/shop/Price';
 import ProductCard from '../../../components/shop/ProductCard';
 import { useCart } from '../../../lib/cart';
 import { useLang } from '../../../lib/i18n';
-import { formatMoney } from '../../../lib/format';
+import { discountLabel, isOnSale } from '../../../lib/pricing';
 import { getCareGuide } from '../../../lib/care-guides';
 import {
   getCatalogItem,
@@ -19,7 +20,7 @@ const COPY = {
   es: {
     back: '← Volver a la tienda',
     loading: 'Cargando…',
-    notFoundTitle: 'No encontramos esta planta',
+    notFoundTitle: 'No encontramos este producto',
     notFoundCopy: 'Puede que ya no esté disponible en el vivero.',
     backToShop: 'Volver a la tienda',
     soldOut: 'Agotado',
@@ -42,12 +43,13 @@ const COPY = {
     petSafeNo: 'Mantener fuera de alcance',
     fullGuide: 'Ver todas las guías',
     relatedTitle: 'También te puede gustar',
+    storeSale: 'Todo el vivero',
     shopVivero: 'Ver todo de este vivero →',
   },
   en: {
     back: '← Back to the shop',
     loading: 'Loading…',
-    notFoundTitle: 'We could not find this plant',
+    notFoundTitle: 'We could not find this product',
     notFoundCopy: 'It may no longer be available at the vivero.',
     backToShop: 'Back to the shop',
     soldOut: 'Sold out',
@@ -70,11 +72,12 @@ const COPY = {
     petSafeNo: 'Keep out of reach',
     fullGuide: 'See all care guides',
     relatedTitle: 'You may also like',
+    storeSale: 'Vivero-wide',
     shopVivero: 'See everything from this vivero →',
   },
 };
 
-export default function PlantDetailPage() {
+export default function ProductDetailPage() {
   const { lang } = useLang();
   const copy = COPY[lang];
   const params = useParams();
@@ -135,7 +138,7 @@ export default function PlantDetailPage() {
   const inCart = lines.some((line) => line.id === item.id);
 
   return (
-    <div className="container section" style={{ display: 'grid', gap: '3.5rem' }}>
+    <div className="container section detail-stack">
       <Link
         href="/shop"
         style={{
@@ -152,12 +155,12 @@ export default function PlantDetailPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))',
           gap: '3rem',
           alignItems: 'start',
         }}
       >
-        <div className="frame frame--45">
+        <div className="frame frame--45 product-hero">
           {item.image_url ? (
             <img src={resolveImageUrl(item.image_url) ?? undefined} alt={item.plant_name} />
           ) : (
@@ -173,7 +176,7 @@ export default function PlantDetailPage() {
               {item.store_name}
               {item.store_location ? ` · ${item.store_location}` : ''}
             </Link>
-            <h1 style={{ fontSize: 'clamp(1.9rem, 4vw, 2.7rem)' }}>{item.plant_name}</h1>
+            <h1 className="page-title">{item.plant_name}</h1>
             {item.genus && (
               <span style={{ fontSize: '0.9rem', color: 'var(--muted)', fontStyle: 'italic' }}>
                 {item.genus}
@@ -181,9 +184,12 @@ export default function PlantDetailPage() {
             )}
           </div>
 
-          <span className="display" style={{ fontSize: '1.9rem', color: 'var(--green-700)' }}>
-            {formatMoney(item.price)}
-          </span>
+          <Price
+            price={item.price}
+            original={item.original_price}
+            size="lg"
+            className="display"
+          />
 
           {item.description && <p className="lead">{item.description}</p>}
 
@@ -200,6 +206,12 @@ export default function PlantDetailPage() {
           <hr className="hairline" />
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {isOnSale(item) && (
+              <span className="badge badge--sale">
+                {discountLabel(item.discount_percent as number)}
+                {item.discount_source === 'store' ? ` · ${copy.storeSale}` : ''}
+              </span>
+            )}
             {soldOut ? (
               <span className="badge badge--out">{copy.soldOut}</span>
             ) : item.stock < 8 ? (
@@ -250,7 +262,7 @@ export default function PlantDetailPage() {
         <div style={{ display: 'grid', gap: '1.5rem' }}>
           <div style={{ display: 'grid', gap: '0.5rem' }}>
             <span className="eyebrow">{copy.careEyebrow}</span>
-            <h2 style={{ fontSize: '1.9rem' }}>{copy.careTitle(guide.genus)}</h2>
+            <h2 className="section-title">{copy.careTitle(guide.genus)}</h2>
             <p className="lead" style={{ maxWidth: '46rem' }}>
               {guide.summary[lang]}
             </p>
@@ -259,7 +271,7 @@ export default function PlantDetailPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))',
               gap: '0 2.5rem',
             }}
           >
@@ -320,11 +332,11 @@ export default function PlantDetailPage() {
 
       {related.length > 0 && (
         <div style={{ display: 'grid', gap: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.6rem' }}>{copy.relatedTitle}</h2>
+          <h2 className="section-title">{copy.relatedTitle}</h2>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(210px, 100%), 1fr))',
               gap: '2rem 1.5rem',
             }}
           >

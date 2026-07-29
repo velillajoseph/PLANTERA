@@ -1,12 +1,20 @@
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, File, Header, HTTPException, Query, UploadFile
 from sqlmodel import Session, select
 
-from .db import engine
+from .auth import (
+    VENDOR_IDLE_MINUTES,
+    bearer_token,
+    get_current_store,
+    get_session,
+    new_expiration,
+    revoke_other_sessions,
+    revoke_token,
+)
 from .models import (
     ChangePasswordRequest,
     InventoryItem,
@@ -31,9 +39,10 @@ from .models import (
     VendorTotals,
 )
 from .security import (
+    MIN_PASSWORD_LENGTH,
     generate_session_token,
-    hash_vendor_password,
-    verify_vendor_password,
+    hash_password,
+    verify_password,
 )
 from .storage import ImageValidationError, delete_image, save_image
 
@@ -41,32 +50,12 @@ logger = structlog.get_logger()
 
 router = APIRouter(prefix="/api/vendor", tags=["vendor"])
 
-SESSION_TTL_DAYS = 7
 LOW_STOCK_THRESHOLD = 8
 MONTHS_IN_SERIES = 6
 
-
-def get_session():
-    with Session(engine) as session:
-        yield session
-
-
-def get_current_store(
-    authorization: Optional[str] = Header(default=None),
-    session: Session = Depends(get_session),
-) -> StoreProfile:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    token = authorization.removeprefix("Bearer ").strip()
-
-    vendor_session = session.exec(select(VendorSession).where(VendorSession.token == token)).first()
-    if not vendor_session or vendor_session.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=401, detail="Session expired or invalid")
-
-    store = session.get(StoreProfile, vendor_session.store_id)
-    if not store or not store.is_active:
-        raise HTTPException(status_code=401, detail="Vendor account inactive")
-    return store
+# Re-exported so `app.dependency_overrides[app.vendor.get_session]` keeps
+# pointing at the same function object the dependency actually resolves.
+__all__ = ["router", "get_session", "get_current_store"]
 
 
 @router.post("/login", response_model=VendorLoginResponse)
@@ -77,7 +66,7 @@ def login(payload: VendorLogin, session: Session = Depends(get_session)):
         not store
         or not store.is_active
         or not store.password_hash
-        or not verify_vendor_password(payload.password, store.password_hash)
+        or not verify_password(payload.password, store.password_hash)
     ):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
@@ -85,7 +74,7 @@ def login(payload: VendorLogin, session: Session = Depends(get_session)):
     vendor_session = VendorSession(
         store_id=store.id,
         token=token,
-        expires_at=datetime.utcnow() + timedelta(days=SESSION_TTL_DAYS),
+        expires_at=new_expiration(datetime.utcnow(), VENDOR_IDLE_MINUTES),
     )
     session.add(vendor_session)
     session.commit()
@@ -99,15 +88,8 @@ def logout(
     authorization: Optional[str] = Header(default=None),
     session: Session = Depends(get_session),
 ):
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.removeprefix("Bearer ").strip()
-        vendor_session = session.exec(
-            select(VendorSession).where(VendorSession.token == token)
-        ).first()
-        if vendor_session:
-            session.delete(vendor_session)
-            session.commit()
-            logger.info("vendor_logged_out", store_id=vendor_session.store_id)
+    if revoke_token(session, VendorSession, bearer_token(authorization)):
+        logger.info("vendor_logged_out")
 
 
 @router.get("/me", response_model=StorePublic)
@@ -317,26 +299,29 @@ def change_password(
     store: StoreProfile = Depends(get_current_store),
     session: Session = Depends(get_session),
 ):
-    if not store.password_hash or not verify_vendor_password(
+    if not store.password_hash or not verify_password(
         payload.current_password, store.password_hash
     ):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
-    if len(payload.new_password) < 8:
-        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+    if len(payload.new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"New password must be at least {MIN_PASSWORD_LENGTH} characters",
+        )
 
-    store.password_hash = hash_vendor_password(payload.new_password)
+    store.password_hash = hash_password(payload.new_password)
     store.updated_at = datetime.utcnow()
     session.add(store)
+    session.commit()
 
     # Revoke every other session for this store; keep the one making the change.
-    current_token = authorization.removeprefix("Bearer ").strip() if authorization else ""
-    other_sessions = session.exec(
-        select(VendorSession).where(VendorSession.store_id == store.id)
-    ).all()
-    for vendor_session in other_sessions:
-        if vendor_session.token != current_token:
-            session.delete(vendor_session)
-    session.commit()
+    revoke_other_sessions(
+        session,
+        VendorSession,
+        VendorSession.store_id,
+        store.id,
+        bearer_token(authorization) or "",
+    )
     logger.info("vendor_password_changed", store_id=store.id)
 
 

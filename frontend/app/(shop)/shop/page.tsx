@@ -6,10 +6,10 @@ import PaginatedGrid from '../../components/shop/PaginatedGrid';
 import { useLang } from '../../lib/i18n';
 import {
   getCatalog,
-  splitTags,
   type CatalogFacets,
   type CatalogItem,
 } from '../../lib/catalog';
+import { filterItems } from '../../lib/search';
 
 const COPY = {
   es: {
@@ -116,24 +116,20 @@ function ShopContent() {
   };
 
   const visible = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    const filtered = items.filter((item) => {
+    const faceted = items.filter((item) => {
       if (category && item.category !== category) return false;
       if (genus && item.genus !== genus) return false;
       if (vivero && String(item.store_id) !== vivero) return false;
-      if (term) {
-        const haystack = [
-          item.plant_name,
-          item.genus ?? '',
-          item.store_name,
-          ...splitTags(item.tags),
-        ]
-          .join(' ')
-          .toLowerCase();
-        if (!haystack.includes(term)) return false;
-      }
       return true;
     });
+
+    // Same ranking the header typeahead uses, so a term shows the same order
+    // in the dropdown and on the results page.
+    const filtered = query.trim() ? filterItems(faceted, query) : faceted;
+
+    // A search already returns relevance order; only re-sort when the shopper
+    // explicitly picked a different one.
+    if (query.trim() && sort === 'featured') return filtered;
 
     const sorted = [...filtered];
     if (sort === 'new') {
@@ -183,7 +179,7 @@ function ShopContent() {
   return (
     <div className="container section" style={{ display: 'grid', gap: '2rem' }}>
       <div style={{ display: 'grid', gap: '0.6rem' }}>
-        <h1 style={{ fontSize: 'clamp(1.9rem, 4vw, 2.6rem)' }}>
+        <h1 className="page-title">
           {query ? copy.searchResults(query) : copy.title}
         </h1>
         <p className="lead" style={{ fontSize: '0.95rem' }}>
@@ -216,9 +212,10 @@ function ShopContent() {
         </div>
 
         <div
+          className="filter-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(190px, 100%), 1fr))',
             gap: '1rem',
             alignItems: 'end',
           }}

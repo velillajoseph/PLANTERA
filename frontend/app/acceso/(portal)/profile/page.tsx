@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useLang } from '../../../lib/i18n';
 import { useVendor } from '../../../lib/vendor-context';
 import {
+  MAX_DISCOUNT_PERCENT,
+  fromUtcNaive,
+  toUtcNaive,
+  windowLive,
+} from '../../../lib/pricing';
+import {
   ApiError,
   changePassword,
   clearToken,
@@ -28,6 +34,17 @@ const COPY = {
     saved: 'Cambios guardados.',
     errName: 'El nombre no puede estar vacío.',
     errSave: 'No se pudo guardar. Intenta de nuevo.',
+    discountTitle: 'Descuento de tienda',
+    discountSubtitle:
+      'Aplica un porcentaje a todo tu catálogo. Un descuento puesto en una planta específica manda sobre este.',
+    discountLive: (percent: number) => `Ahora mismo: −${percent}% en todo tu catálogo.`,
+    discountNone: 'No tienes un descuento de tienda activo.',
+    discountPercent: 'Descuento (%)',
+    discountStart: 'Empieza',
+    discountEnd: 'Termina',
+    discountHint: 'Deja las fechas en blanco para que corra hasta que lo apagues.',
+    errDiscount: 'El descuento debe ser un número entero entre 0 y 90.',
+    errDiscountRange: 'La fecha de fin debe ser posterior a la de inicio.',
     passwordTitle: 'Cambiar contraseña',
     passwordSubtitle:
       'Al cambiarla, cerraremos la sesión en cualquier otro dispositivo.',
@@ -58,6 +75,17 @@ const COPY = {
     saved: 'Changes saved.',
     errName: 'The name cannot be empty.',
     errSave: 'Could not save. Please try again.',
+    discountTitle: 'Store-wide discount',
+    discountSubtitle:
+      'Apply a percentage across your whole catalog. A discount set on a single listing overrides this one.',
+    discountLive: (percent: number) => `Right now: −${percent}% across your catalog.`,
+    discountNone: 'No store-wide discount is running.',
+    discountPercent: 'Discount (%)',
+    discountStart: 'Starts',
+    discountEnd: 'Ends',
+    discountHint: 'Leave the dates blank to run it until you switch it off.',
+    errDiscount: 'The discount must be a whole number between 0 and 90.',
+    errDiscountRange: 'The end date must be after the start date.',
     passwordTitle: 'Change password',
     passwordSubtitle:
       'Changing it will log you out on any other device.',
@@ -92,6 +120,56 @@ export default function ProfilePage() {
     'idle' | 'saving' | 'saved' | 'errName' | 'errSave'
   >('idle');
 
+  const [discount, setDiscount] = useState({
+    percent: profile.store_discount_percent
+      ? String(profile.store_discount_percent)
+      : '',
+    startsAt: fromUtcNaive(profile.store_discount_starts_at),
+    endsAt: fromUtcNaive(profile.store_discount_ends_at),
+  });
+  const [discountState, setDiscountState] = useState<
+    'idle' | 'saving' | 'saved' | 'errPercent' | 'errRange' | 'errSave'
+  >('idle');
+
+  const saveDiscount = async (event: FormEvent) => {
+    event.preventDefault();
+    const percent = discount.percent.trim() ? Number(discount.percent) : 0;
+    if (
+      Number.isNaN(percent) ||
+      !Number.isInteger(percent) ||
+      percent < 0 ||
+      percent > MAX_DISCOUNT_PERCENT
+    ) {
+      setDiscountState('errPercent');
+      return;
+    }
+    if (
+      discount.startsAt &&
+      discount.endsAt &&
+      new Date(discount.endsAt) <= new Date(discount.startsAt)
+    ) {
+      setDiscountState('errRange');
+      return;
+    }
+
+    setDiscountState('saving');
+    try {
+      await updateProfile({
+        store_discount_percent: percent,
+        store_discount_starts_at: toUtcNaive(discount.startsAt),
+        store_discount_ends_at: toUtcNaive(discount.endsAt),
+      });
+      await refreshProfile();
+      setDiscountState('saved');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        handleAuthFailure();
+        return;
+      }
+      setDiscountState('errSave');
+    }
+  };
+
   const [passwords, setPasswords] = useState({
     current: '',
     next: '',
@@ -100,6 +178,10 @@ export default function ProfilePage() {
   const [passwordState, setPasswordState] = useState<
     'idle' | 'changing' | 'changed' | 'errCurrent' | 'errWeak' | 'errMatch' | 'errChange'
   >('idle');
+
+  const liveNow =
+    profile.store_discount_percent > 0 &&
+    windowLive(profile.store_discount_starts_at, profile.store_discount_ends_at);
 
   const handleAuthFailure = () => {
     clearToken();
@@ -184,7 +266,7 @@ export default function ProfilePage() {
   return (
     <div className="container section" style={{ display: 'grid', gap: '1.75rem' }}>
       <div style={{ display: 'grid', gap: '0.5rem' }}>
-        <h1 style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.4rem)' }}>{copy.title}</h1>
+        <h1 className="page-title">{copy.title}</h1>
         <p className="lead" style={{ fontSize: '0.95rem' }}>
           {copy.subtitle}
         </p>
@@ -275,6 +357,92 @@ export default function ProfilePage() {
             disabled={profileState === 'saving'}
           >
             {profileState === 'saving' ? copy.saving : copy.save}
+          </button>
+        </div>
+      </form>
+
+      <form
+        onSubmit={saveDiscount}
+        className="card"
+        style={{ display: 'grid', gap: '1rem', maxWidth: '720px' }}
+      >
+        <div style={{ display: 'grid', gap: '0.35rem' }}>
+          <h2 style={{ fontSize: '1.3rem' }}>{copy.discountTitle}</h2>
+          <p style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
+            {copy.discountSubtitle}
+          </p>
+        </div>
+
+        <p
+          style={{
+            fontSize: '0.92rem',
+            fontWeight: 600,
+            color: liveNow ? 'var(--green-700)' : 'var(--muted)',
+          }}
+        >
+          {liveNow
+            ? copy.discountLive(profile.store_discount_percent)
+            : copy.discountNone}
+        </p>
+
+        <div
+          className="stack-on-mobile"
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}
+        >
+          <label className="field">
+            {copy.discountPercent}
+            <input
+              className="input"
+              type="number"
+              min="0"
+              max={MAX_DISCOUNT_PERCENT}
+              step="1"
+              value={discount.percent}
+              onChange={(event) =>
+                setDiscount({ ...discount, percent: event.target.value })
+              }
+              placeholder="0"
+            />
+          </label>
+          <label className="field">
+            {copy.discountStart}
+            <input
+              className="input"
+              type="datetime-local"
+              value={discount.startsAt}
+              onChange={(event) =>
+                setDiscount({ ...discount, startsAt: event.target.value })
+              }
+            />
+          </label>
+          <label className="field">
+            {copy.discountEnd}
+            <input
+              className="input"
+              type="datetime-local"
+              value={discount.endsAt}
+              onChange={(event) =>
+                setDiscount({ ...discount, endsAt: event.target.value })
+              }
+            />
+          </label>
+        </div>
+        <p style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
+          {copy.discountHint}
+        </p>
+        {feedback(discountState, {
+          saved: { text: copy.saved, error: false },
+          errPercent: { text: copy.errDiscount, error: true },
+          errRange: { text: copy.errDiscountRange, error: true },
+          errSave: { text: copy.errSave, error: true },
+        })}
+        <div>
+          <button
+            type="submit"
+            className="btn btn--small"
+            disabled={discountState === 'saving'}
+          >
+            {discountState === 'saving' ? copy.saving : copy.save}
           </button>
         </div>
       </form>

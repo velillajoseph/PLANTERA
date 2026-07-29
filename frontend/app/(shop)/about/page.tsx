@@ -95,7 +95,7 @@ export default function AboutPage() {
       <section className="section" style={{ paddingBottom: '2rem' }}>
         <div className="container" style={{ display: 'grid', gap: '1.25rem', maxWidth: '48rem' }}>
           <span className="eyebrow">{copy.eyebrow}</span>
-          <h1 style={{ fontSize: 'clamp(2.1rem, 4.5vw, 3.1rem)' }}>{copy.title}</h1>
+          <h1 className="page-title">{copy.title}</h1>
           <p className="lead" style={{ fontSize: '1.1rem' }}>
             {copy.lead}
           </p>
@@ -115,11 +115,11 @@ export default function AboutPage() {
           className="container"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
             gap: '3rem',
           }}
         >
-          <h2 style={{ fontSize: '1.9rem' }}>{copy.storyTitle}</h2>
+          <h2 className="section-title">{copy.storyTitle}</h2>
           <div style={{ display: 'grid', gap: '1.1rem' }}>
             {copy.storyBody.map((paragraph) => (
               <p key={paragraph} className="lead">
@@ -132,11 +132,11 @@ export default function AboutPage() {
 
       <section className="section" style={{ paddingTop: '1rem' }}>
         <div className="container" style={{ display: 'grid', gap: '1.75rem' }}>
-          <h2 style={{ fontSize: '1.9rem' }}>{copy.valuesTitle}</h2>
+          <h2 className="section-title">{copy.valuesTitle}</h2>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(250px, 100%), 1fr))',
               gap: '1.25rem',
             }}
           >
@@ -160,7 +160,7 @@ export default function AboutPage() {
           className="container"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
             gap: '3rem',
             alignItems: 'center',
           }}
@@ -191,7 +191,7 @@ export default function AboutPage() {
             maxWidth: '38rem',
           }}
         >
-          <h2 style={{ fontSize: '1.8rem' }}>{copy.ctaTitle}</h2>
+          <h2 className="section-title">{copy.ctaTitle}</h2>
           <p className="lead">{copy.ctaBody}</p>
           <Link href="/contact" className="btn">
             {copy.ctaButton}

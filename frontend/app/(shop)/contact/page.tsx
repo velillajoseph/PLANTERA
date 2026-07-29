@@ -95,7 +95,7 @@ export default function ContactPage() {
     <div className="container section" style={{ display: 'grid', gap: '2.5rem' }}>
       <div style={{ display: 'grid', gap: '1rem', maxWidth: '42rem' }}>
         <span className="eyebrow">{copy.eyebrow}</span>
-        <h1 style={{ fontSize: 'clamp(2rem, 4.5vw, 2.9rem)' }}>{copy.title}</h1>
+        <h1 className="page-title">{copy.title}</h1>
         <p className="lead" style={{ fontSize: '1.05rem' }}>
           {copy.lead}
         </p>
@@ -104,7 +104,7 @@ export default function ContactPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(290px, 100%), 1fr))',
           gap: '2rem',
           alignItems: 'start',
         }}

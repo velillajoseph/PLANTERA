@@ -47,23 +47,15 @@ export default function Logo({
   return (
     <Link
       href={href}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.6rem',
-      }}
+      className="logo"
+      // Size travels as a custom property, not an inline font-size: an inline
+      // value outranks every stylesheet rule, so narrow phones could never
+      // shrink the wordmark and the header refused to fit below 377px.
+      style={{ '--logo-size': fontSize } as React.CSSProperties}
       aria-label="Plantera"
     >
       <LeafMark color={leafColor} />
-      <span
-        className="display"
-        style={{
-          fontSize,
-          letterSpacing: '0.32em',
-          color: textColor,
-          transform: 'translateY(1px)',
-        }}
-      >
+      <span className="display logo__word" style={{ color: textColor }}>
         PLANTERA
       </span>
     </Link>

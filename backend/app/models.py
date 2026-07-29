@@ -76,6 +76,33 @@ class CustomerResendRequest(SQLModel):
     email: EmailStr
 
 
+class CustomerLogin(SQLModel):
+    email: EmailStr
+    password: str
+
+
+class CustomerLoginResponse(SQLModel):
+    token: str
+    customer: CustomerPublic
+    expires_at: datetime
+
+
+class CustomerProfileUpdate(SQLModel):
+    # email is deliberately absent: it is the login identity and the anchor the
+    # verification code was sent to, so changing it needs its own re-verify flow.
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+
+
+class SessionWindow(SQLModel):
+    expires_at: datetime
+
+
+class FavoriteIds(SQLModel):
+    ids: list[int]
+
+
 class AdminProfile(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     display_name: str = Field(max_length=120)
@@ -118,6 +145,11 @@ class StoreProfile(SQLModel, table=True):
     dashboard_message: Optional[str] = Field(default=None, max_length=255)
     password_hash: Optional[str] = Field(default=None, max_length=255)
     is_active: bool = Field(default=True)
+    # Percent off every listing in this store. Prefixed so a grep for
+    # `store_discount_` is unambiguous against the per-item columns.
+    store_discount_percent: int = Field(default=0, ge=0, le=90)
+    store_discount_starts_at: Optional[datetime] = None
+    store_discount_ends_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -130,6 +162,9 @@ class StoreCreate(SQLModel):
     address: Optional[str] = None
     banner_image: Optional[str] = None
     dashboard_message: Optional[str] = None
+    store_discount_percent: int = Field(default=0, ge=0, le=90)
+    store_discount_starts_at: Optional[datetime] = None
+    store_discount_ends_at: Optional[datetime] = None
 
 
 class StoreUpdate(SQLModel):
@@ -139,6 +174,9 @@ class StoreUpdate(SQLModel):
     address: Optional[str] = None
     banner_image: Optional[str] = None
     dashboard_message: Optional[str] = None
+    store_discount_percent: Optional[int] = Field(default=None, ge=0, le=90)
+    store_discount_starts_at: Optional[datetime] = None
+    store_discount_ends_at: Optional[datetime] = None
 
 
 class StorePublic(SQLModel):
@@ -150,6 +188,9 @@ class StorePublic(SQLModel):
     address: Optional[str]
     banner_image: Optional[str]
     dashboard_message: Optional[str]
+    store_discount_percent: int
+    store_discount_starts_at: Optional[datetime]
+    store_discount_ends_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
 
@@ -173,6 +214,13 @@ class InventoryItem(SQLModel, table=True):
     # Distinct from stock == 0, which remains visible as "sold out".
     is_active: bool = Field(default=True)
     is_featured: bool = Field(default=False)
+    # Percent off this listing. 0 == none. Capped at 90 so a mistyped value
+    # cannot zero out a price; the effective price is also floored at $0.01.
+    discount_percent: int = Field(default=0, ge=0, le=90)
+    # A blank bound is open-ended: the discount runs until the vivero turns it
+    # off. Naive UTC, matching Promotion.starts_at / ends_at.
+    discount_starts_at: Optional[datetime] = None
+    discount_ends_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -180,16 +228,28 @@ class InventoryItem(SQLModel, table=True):
 class InventoryItemCreate(SQLModel):
     plant_name: str
     description: Optional[str] = None
-    price: float
+    # gt=0 mirrors the table; without it a zero-price item would list at the
+    # $0.01 discount floor instead of being rejected.
+    price: float = Field(gt=0)
     stock: int = 0
     image_url: Optional[str] = None
     tags: Optional[str] = None
     genus: Optional[str] = None
     category: str = "plant"
     is_featured: bool = False
+    discount_percent: int = Field(default=0, ge=0, le=90)
+    discount_starts_at: Optional[datetime] = None
+    discount_ends_at: Optional[datetime] = None
 
 
 class InventoryItemPublic(SQLModel):
+    """The vendor's own view of a listing.
+
+    `price` here is the **list** price the vivero set, never the discounted one
+    — the portal edits list prices. The storefront's CatalogItem.price is the
+    effective price. Same field name, two deliberate meanings.
+    """
+
     id: int
     store_id: int
     plant_name: str
@@ -202,6 +262,9 @@ class InventoryItemPublic(SQLModel):
     category: str
     is_active: bool
     is_featured: bool
+    discount_percent: int
+    discount_starts_at: Optional[datetime]
+    discount_ends_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
 
@@ -210,11 +273,15 @@ class InventoryItemPublic(SQLModel):
 
 
 class PlantPreview(SQLModel):
+    """Shopper-facing summary. `price` is the effective price — see CatalogItem."""
+
     id: int
     store_id: int
     store_name: Optional[str]
     title: str
     price: float
+    original_price: Optional[float] = None
+    discount_percent: Optional[int] = None
     image_url: Optional[str]
 
 
@@ -262,6 +329,17 @@ class VendorSession(SQLModel, table=True):
     store_id: int = Field(foreign_key="storeprofile.id")
     token: str = Field(sa_column=Column(String(128), unique=True, index=True))
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    # Slides forward on activity; see auth.touch_session. There is no
+    # last_seen_at column on purpose — create_all cannot add columns to an
+    # existing table, and created_at + expires_at already encode the same thing.
+    expires_at: datetime
+
+
+class CustomerSession(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    customer_id: int = Field(foreign_key="customeraccount.id", index=True)
+    token: str = Field(sa_column=Column(String(128), unique=True, index=True))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
     expires_at: datetime
 
 
@@ -302,6 +380,11 @@ class InventoryItemUpdate(SQLModel):
     category: Optional[str] = None
     is_active: Optional[bool] = None
     is_featured: Optional[bool] = None
+    discount_percent: Optional[int] = Field(default=None, ge=0, le=90)
+    # Sending an explicit null clears a bound; `exclude_unset` in the vendor
+    # PATCH keeps "absent" and "null" distinct.
+    discount_starts_at: Optional[datetime] = None
+    discount_ends_at: Optional[datetime] = None
 
 
 class VendorTotals(SQLModel):
@@ -373,10 +456,23 @@ class ChangePasswordRequest(SQLModel):
 
 
 class CatalogItem(SQLModel):
+    """A listing as the shopper sees it.
+
+    `price` is the **effective** price — what they pay, discount already
+    applied. `original_price` and `discount_percent` are None unless a discount
+    is live, so `original_price is not None` is the single "on sale" test; they
+    are never 0. This is deliberately the opposite meaning to
+    InventoryItemPublic.price, which is the vivero's list price.
+    """
+
     id: int
     plant_name: str
     description: Optional[str]
     price: float
+    original_price: Optional[float] = None
+    discount_percent: Optional[int] = None
+    # "item" | "store" — lets the storefront say why something is discounted.
+    discount_source: Optional[str] = None
     stock: int
     image_url: Optional[str]
     tags: Optional[str]
@@ -411,3 +507,75 @@ class CatalogResponse(SQLModel):
 class CatalogDetail(SQLModel):
     item: CatalogItem
     related: list[CatalogItem]
+
+
+class CatalogPricing(SQLModel):
+    """Just enough to re-price a cart line. An id missing from the response
+    means the listing is gone — deleted, paused, or its vivero deactivated."""
+
+    id: int
+    price: float
+    original_price: Optional[float] = None
+    discount_percent: Optional[int] = None
+    stock: int
+
+
+class CustomerOrder(SQLModel):
+    """Shape of a customer's own order history.
+
+    Nothing populates this yet: `Order` records a `customer_name` string rather
+    than a customer id, and there is no checkout. The endpoint returns an empty
+    list so the UI contract is settled before the data exists.
+    """
+
+    id: int
+    store_name: str
+    total: float
+    created_at: datetime
+    items: list[OrderLineRead]
+
+
+class Promotion(SQLModel, table=True):
+    """A paid or promotional slot on the storefront, owned by one vivero.
+
+    Bilingual columns rather than a JSON blob: the storefront's `Localized`
+    convention is `{es, en}` on every field, and SQLite JSON columns can't be
+    filtered or ordered usefully here.
+    """
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    store_id: int = Field(foreign_key="storeprofile.id", index=True)
+    headline_es: str = Field(max_length=120)
+    headline_en: str = Field(max_length=120)
+    body_es: Optional[str] = Field(default=None, max_length=280)
+    body_en: Optional[str] = Field(default=None, max_length=280)
+    cta_label_es: str = Field(default="Ver colección", max_length=60)
+    cta_label_en: str = Field(default="Shop the collection", max_length=60)
+    cta_href: str = Field(default="/shop", max_length=255)
+    image_url: Optional[str] = Field(default=None, max_length=255)
+    starts_at: datetime = Field(default_factory=datetime.utcnow)
+    ends_at: datetime
+    # The lever a paid tier turns. Higher wins; see promotions.rank_promotions.
+    priority: int = Field(default=0, index=True)
+    is_active: bool = Field(default=True)
+    impressions: int = Field(default=0, ge=0)
+    clicks: int = Field(default=0, ge=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PromotionPublic(SQLModel):
+    id: int
+    store_id: int
+    store_name: str
+    headline_es: str
+    headline_en: str
+    body_es: Optional[str]
+    body_en: Optional[str]
+    cta_label_es: str
+    cta_label_en: str
+    cta_href: str
+    image_url: Optional[str]
+
+
+class PromotionEvent(SQLModel):
+    type: str  # "impression" | "click"

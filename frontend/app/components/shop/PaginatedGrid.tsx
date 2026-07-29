@@ -3,7 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import ProductCard from './ProductCard';
 import { useLang } from '../../lib/i18n';
+import { useReducedMotion } from '../../lib/use-reduced-motion';
 import type { CatalogItem } from '../../lib/catalog';
+
+/**
+ * Must stay just past the `.grid-swap` fade in globals.css (currently 0.16s),
+ * so the new page mounts only after the old one has finished fading. A CSS
+ * custom property can't be read here without getComputedStyle, so the two
+ * values are coupled by hand — change one, change the other.
+ */
+const FADE_OUT_MS = 170;
 
 const COPY = {
   es: {
@@ -42,6 +51,7 @@ export default function PaginatedGrid({
 }) {
   const { lang } = useLang();
   const copy = COPY[lang];
+  const reducedMotion = useReducedMotion();
 
   const [page, setPage] = useState(1);
   const [visible, setVisible] = useState(items);
@@ -73,8 +83,12 @@ export default function PaginatedGrid({
       setCycle((value) => value + 1);
       setFading(false);
       setLockedHeight(undefined);
-      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 170);
+      // The CSS media query cannot reach scrollIntoView, so ask directly.
+      containerRef.current?.scrollIntoView({
+        behavior: reducedMotion ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    }, FADE_OUT_MS);
   };
 
   if (items.length === 0) {
@@ -86,15 +100,18 @@ export default function PaginatedGrid({
   }
 
   return (
-    <div ref={containerRef} style={{ display: 'grid', gap: '2rem', scrollMarginTop: '96px' }}>
-      <div style={{ minHeight: lockedHeight }}>
+    <div
+      ref={containerRef}
+      style={{ display: 'grid', gap: '2rem', scrollMarginTop: '96px', minWidth: 0 }}
+    >
+      <div style={{ minHeight: lockedHeight, minWidth: 0 }}>
         <div
           ref={gridRef}
           key={cycle}
           className={`grid-swap product-grid${fading ? ' grid-swap--out' : ''}`}
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(auto-fill, minmax(${minColumnWidth}px, 1fr))`,
+            gridTemplateColumns: `repeat(auto-fill, minmax(min(${minColumnWidth}px, 100%), 1fr))`,
             gap: '2.2rem 1.5rem',
           }}
         >
@@ -126,7 +143,18 @@ export default function PaginatedGrid({
             <span />
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          {/* Wraps: "Anterior 1 2 Siguiente" on one unbreakable line is ~290px
+              of min-content, which held the whole page wider than a narrow
+              phone could show. */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              flexWrap: 'wrap',
+              minWidth: 0,
+            }}
+          >
             <button
               type="button"
               className="page-dot"

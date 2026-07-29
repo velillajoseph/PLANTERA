@@ -5,7 +5,17 @@ export type CatalogItem = {
   id: number;
   plant_name: string;
   description: string | null;
+  /**
+   * The **effective** price — what the shopper pays, discount already applied.
+   * Deliberately the opposite meaning to `InventoryItem.price` in `api.ts`,
+   * which is the vivero's list price.
+   */
   price: number;
+  /** The pre-discount price. Null unless a discount is live — never 0. */
+  original_price: number | null;
+  discount_percent: number | null;
+  /** "item" | "store" — which rule produced the discount. */
+  discount_source: string | null;
   stock: number;
   image_url: string | null;
   tags: string | null;
@@ -37,6 +47,15 @@ export type CatalogResponse = {
   facets: CatalogFacets;
 };
 
+/** Just enough to re-price a cart line; see `getCartPricing`. */
+export type CatalogPricing = {
+  id: number;
+  price: number;
+  original_price: number | null;
+  discount_percent: number | null;
+  stock: number;
+};
+
 export type CatalogDetail = {
   item: CatalogItem;
   related: CatalogItem[];
@@ -63,6 +82,16 @@ async function catalogFetch<T>(path: string): Promise<T> {
 
 export function getCatalog() {
   return catalogFetch<CatalogResponse>('/api/catalog');
+}
+
+/**
+ * Current price and stock for a set of listings. An id missing from the
+ * response means the listing is gone — deleted, paused, or from a vivero that
+ * went inactive.
+ */
+export function getCartPricing(ids: number[]): Promise<CatalogPricing[]> {
+  if (!ids.length) return Promise.resolve([]);
+  return catalogFetch<CatalogPricing[]>(`/api/catalog/pricing?ids=${ids.join(',')}`);
 }
 
 export function getCatalogItem(id: number) {

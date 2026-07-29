@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Drawer from '../Drawer';
@@ -81,7 +81,9 @@ function Accordion({
           <CaretIcon />
         </span>
       </button>
-      <div className={`drawer-accordion${open ? ' drawer-accordion--open' : ''}`}>
+      <div
+        className={`drawer-accordion${open ? ' drawer-accordion--open' : ''}`}
+      >
         <div>{children}</div>
       </div>
     </div>
@@ -92,27 +94,21 @@ export default function MobileNavDrawer({
   open,
   onClose,
   facets,
+  onSearch,
 }: {
   open: boolean;
   onClose: () => void;
   facets: CatalogFacets | null;
+  onSearch: () => void;
 }) {
   const { lang } = useLang();
   const copy = COPY[lang];
   const router = useRouter();
-  const [query, setQuery] = useState('');
   const [shopOpen, setShopOpen] = useState(true);
 
   const go = (href: string) => {
     onClose();
     router.push(href);
-  };
-
-  const submitSearch = (event: FormEvent) => {
-    event.preventDefault();
-    const term = query.trim();
-    setQuery('');
-    go(term ? `/shop?q=${encodeURIComponent(term)}` : '/shop');
   };
 
   return (
@@ -131,27 +127,19 @@ export default function MobileNavDrawer({
       </div>
 
       <div className="drawer__body">
-        <form
-          onSubmit={submitSearch}
-          style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}
+        {/* Hands off to the single search overlay rather than owning a second
+            input — two fields meant two independent pieces of state. */}
+        <button
+          type="button"
+          className="drawer-search"
+          onClick={() => {
+            onClose();
+            onSearch();
+          }}
         >
-          <input
-            className="input"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={copy.searchPlaceholder}
-            aria-label={copy.search}
-            enterKeyHint="search"
-          />
-          <button
-            type="submit"
-            className="icon-button"
-            aria-label={copy.search}
-            style={{ flexShrink: 0 }}
-          >
-            <SearchIcon />
-          </button>
-        </form>
+          <SearchIcon />
+          <span>{copy.searchPlaceholder}</span>
+        </button>
 
         <div className="drawer-section">
           <button
@@ -176,7 +164,11 @@ export default function MobileNavDrawer({
             className={`drawer-accordion${shopOpen ? ' drawer-accordion--open' : ''}`}
           >
             <div>
-              <button type="button" className="drawer-link drawer-link--sub" onClick={() => go('/shop')}>
+              <button
+                type="button"
+                className="drawer-link drawer-link--sub"
+                onClick={() => go('/shop')}
+              >
                 {copy.all}
               </button>
               <button
@@ -202,7 +194,9 @@ export default function MobileNavDrawer({
                       type="button"
                       className="drawer-link drawer-link--sub"
                       style={{ paddingLeft: '1.8rem' }}
-                      onClick={() => go(`/shop?genus=${encodeURIComponent(genus)}`)}
+                      onClick={() =>
+                        go(`/shop?genus=${encodeURIComponent(genus)}`)
+                      }
                     >
                       {genus}
                     </button>
@@ -246,7 +240,11 @@ export default function MobileNavDrawer({
 
       <div
         className="drawer__foot"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
       >
         <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
           {copy.language}

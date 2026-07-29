@@ -1,3 +1,10 @@
+"""Pure crypto helpers.
+
+Deliberately free of DB and FastAPI imports so `seed.py` and the tests can
+import it without pulling half the app in. Anything that needs a Session lives
+in `auth.py` instead.
+"""
+
 import hashlib
 import os
 import secrets
@@ -7,13 +14,15 @@ VERIFICATION_TTL_MINUTES = int(os.getenv("VERIFICATION_TTL_MINUTES", "30"))
 
 PBKDF2_ITERATIONS = 200_000
 
+MIN_PASSWORD_LENGTH = 8
+
 
 def hash_password(password: str) -> str:
-    salt = os.getenv("PASSWORD_SALT", "")
-    return hashlib.sha256(f"{salt}:{password}".encode()).hexdigest()
+    """PBKDF2-SHA256 with a per-password salt, stored as `pbkdf2$iters$salt$hex`.
 
-
-def hash_vendor_password(password: str) -> str:
+    Vendors and customers share this scheme — there was never anything
+    vendor-specific about it beyond the old function name.
+    """
     salt = secrets.token_hex(16)
     digest = hashlib.pbkdf2_hmac(
         "sha256", password.encode(), bytes.fromhex(salt), PBKDF2_ITERATIONS
@@ -21,7 +30,7 @@ def hash_vendor_password(password: str) -> str:
     return f"pbkdf2${PBKDF2_ITERATIONS}${salt}${digest.hex()}"
 
 
-def verify_vendor_password(password: str, stored: str) -> bool:
+def verify_password(password: str, stored: str) -> bool:
     try:
         scheme, iterations, salt, expected = stored.split("$")
         if scheme != "pbkdf2":
